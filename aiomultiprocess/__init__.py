@@ -7,3 +7,5 @@ AsyncIO version of the standard multiprocessing module
 
 __author__ = "John Reese"
 __version__ = "0.1.0"
+
+from .core import Process, Worker
