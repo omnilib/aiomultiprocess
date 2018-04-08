@@ -10,10 +10,10 @@ release: lint test clean
 
 setup:
 	pip3 install -U mypy pylint twine
-	pip3 install black || true
+	pip3 install black
 
 lint:
-	black --check aiomultiprocess || true
+	black --check aiomultiprocess
 	pylint --rcfile .pylint aiomultiprocess setup.py
 	mypy --ignore-missing-imports --python-version 3.6 .
 
