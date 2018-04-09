@@ -3,24 +3,35 @@
 
 import asyncio
 import logging
-import multiprocessing as mp
+import multiprocessing
+import multiprocessing.managers
 import os
 
 from typing import Any, Awaitable, Callable, Tuple, TypeVar, Dict
 
 R = TypeVar("R")
 
-log = logging.getLogger(__name__)
+# shared context for all multiprocessing primitives
+# fork is unix default and most flexible, but uses more memory (ref counting breaks CoW)
+# see https://docs.python.org/3/library/multiprocessing.html#contexts-and-start-methods
+context = multiprocessing.get_context("fork")
 
+log = logging.getLogger(__name__)
 
 _manager = None
 
 
-def get_manager():
+def get_manager() -> multiprocessing.managers.SyncManager:
     """Return a singleton shared manager."""
     global _manager
     if _manager is None:
-        _manager = mp.Manager()
+        try:
+            manager = context.Manager()
+            log.debug(f"created {manager} on {manager.address}")
+            _manager = manager
+
+        except OSError:
+            return get_manager()
 
     return _manager
 
@@ -46,17 +57,20 @@ class Process:
             raise ValueError(f"initializer must be synchronous function")
 
         self.aio_init = initializer
-        self.aio_target = target
+        self.aio_target = target or self.run
         self.aio_args = args or ()
         self.aio_kwargs = kwargs or {}
-        self.aio_process = mp.Process(
+        self.aio_manager = get_manager()
+        self.aio_process = context.Process(
             group=group, target=self.run_async, name=name, daemon=daemon
         )
 
-    async def run(self) -> Any:
+    async def run(self) -> R:
+        """Override this method to add default behavior when `target` isn't given."""
         raise NotImplementedError()
 
     def run_async(self) -> R:
+        """Initialize the child process and event loop, then execute the coroutine."""
         try:
             if self.aio_init:
                 self.aio_init()
@@ -64,18 +78,12 @@ class Process:
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
 
-            if self.aio_target:
-                log.debug(
-                    f"running {self.aio_target}(*{self.aio_args}, **{self.aio_kwargs}))"
-                )
-                result = loop.run_until_complete(
-                    self.aio_target(*self.aio_args, **self.aio_kwargs)
-                )
-
-            else:
-                result = loop.run_until_complete(
-                    self.run(*self.aio_args, **self.aio_kwargs)
-                )
+            log.debug(
+                f"running {self.aio_target}(*{self.aio_args}, **{self.aio_kwargs}))"
+            )
+            result = loop.run_until_complete(
+                self.aio_target(*self.aio_args, **self.aio_kwargs)
+            )
 
             return result
 
@@ -84,6 +92,7 @@ class Process:
             raise
 
     async def join(self, timeout=None) -> None:
+        """Wait for the process to finish execution without blocking the main thread."""
         if timeout is not None:
             try:
                 return await asyncio.wait_for(self.join(), timeout)
@@ -95,6 +104,7 @@ class Process:
             await asyncio.sleep(0.005)
 
     def __getattr__(self, name):
+        """All other properties chain to the proxied Process object."""
         return getattr(self.aio_process, name)
 
 
@@ -104,11 +114,14 @@ class Worker(Process):
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self.aio_namespace = get_manager().Namespace()
+        self.aio_namespace.result = None
 
-    async def run(self) -> Any:
+    async def run(self) -> R:
+        """Override this method to add default behavior when `target` isn't given."""
         raise NotImplementedError()
 
     def run_async(self) -> R:
+        """Initialize the child process and event loop, then execute the coroutine."""
         try:
             result: R = super().run_async()
             self.aio_namespace.result = result
@@ -120,6 +133,7 @@ class Worker(Process):
 
     @property
     def result(self) -> R:
+        """Easy access to the resulting value from the coroutine."""
         if self.exitcode is not None:
             return self.aio_namespace.result
 
