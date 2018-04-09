@@ -130,7 +130,8 @@ disable=print-statement,
         bad-continuation,
         missing-docstring,
         invalid-name,
-        global-statement
+        global-statement,
+        too-many-instance-attributes
 
 # Enable the message, report, category or checker with the given id(s). You can
 # either give multiple identifier separated by comma (,) or put this option
