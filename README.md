@@ -18,6 +18,46 @@ You can install it from PyPI:
     $ pip3 install aiomultiprocess
 
 
+Usage
+-----
+
+Most of aiomultiprocess mimics the standard multiprocessing module whenever
+possible, while accounting for places that benefit from async functionality.
+
+Executing a coroutine on a child process is as simple as:
+
+    from aiomultiprocess import Process
+
+    async def foo(...):
+        ...
+
+    p = Process(target=foo, args=..., kwargs=...)
+    p.start()
+    await p.join()
+
+If you want to get results back from that coroutine, then use `Worker` instead:
+
+    from aiomultiprocess import Worker
+
+    async def foo(...):
+        ...
+
+    p = Worker(target=foo, args=..., kwargs=...)
+    p.start()
+    await p.join()
+
+    print(p.result)
+
+If you want a managed pool of worker processes, then use `Pool`:
+
+    from aiomultiprocess import Pool
+
+    async def foo(value):
+        return value * 2
+
+    async with Pool() as pool:
+        result = await pool.map(foo, range(10))
+
 
 License
 -------
