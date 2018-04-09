@@ -12,8 +12,11 @@ setup:
 	pip3 install -U mypy pylint twine
 	pip3 install black
 
+black:
+	black aiomultiprocess tests
+
 lint:
-	black --check aiomultiprocess
+	black --check aiomultiprocess tests
 	pylint --rcfile .pylint aiomultiprocess setup.py
 	mypy --ignore-missing-imports --python-version 3.6 .
 
