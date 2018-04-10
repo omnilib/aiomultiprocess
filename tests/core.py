@@ -4,21 +4,12 @@
 import asyncio
 import os
 
-from functools import wraps
 from unittest import TestCase
 
 import aiomultiprocess as amp
 from aiomultiprocess.core import context, PoolWorker
 
-
-def async_test(fn):
-
-    @wraps(fn)
-    def wrapper(*args, **kwargs):
-        loop = asyncio.get_event_loop()
-        return loop.run_until_complete(fn(*args, **kwargs))
-
-    return wrapper
+from .base import async_test
 
 
 async def mapper(value):
@@ -35,7 +26,7 @@ class CoreTest(TestCase):
     async def test_process(self):
 
         async def sleepy():
-            await asyncio.sleep(1)
+            await asyncio.sleep(0.1)
 
         p = amp.Process(target=sleepy, name="test_process")
         p.start()
@@ -51,7 +42,7 @@ class CoreTest(TestCase):
     async def test_worker(self):
 
         async def sleepypid():
-            await asyncio.sleep(1)
+            await asyncio.sleep(0.1)
             return os.getpid()
 
         p = amp.Worker(target=sleepypid)
