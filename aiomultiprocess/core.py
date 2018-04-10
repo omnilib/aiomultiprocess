@@ -236,18 +236,23 @@ class Pool:
         self._loop = asyncio.ensure_future(self.loop())
 
     async def __aenter__(self) -> "Pool":
+        """Enable `async with Pool() as pool` usage."""
         return self
 
     async def __aexit__(self, *args) -> None:
+        """Automatically terminate the pool when falling out of scope."""
         self.terminate()
         await self.join()
 
     async def loop(self) -> None:
+        """Maintain the pool of workers while open."""
         while self.processes or self.running:
+            # clean up workers that reached TTL
             for process in self.processes:
                 if not process.is_alive():
                     self.processes.remove(process)
 
+            # start new workers when slots are unfilled
             while self.running and len(self.processes) < self.process_count:
                 process = PoolWorker(
                     self.tx_queue, self.rx_queue, self.maxtasksperchild
@@ -255,6 +260,7 @@ class Pool:
                 process.start()
                 self.processes.append(process)
 
+            # pull results into a shared dictionary for later retrieval
             while True:
                 try:
                     task_id, value = self.rx_queue.get_nowait()
@@ -263,6 +269,7 @@ class Pool:
                 except queue.Empty:
                     break
 
+            # let someone else do some work for once
             await asyncio.sleep(0.005)
 
     def queue_work(
@@ -271,6 +278,7 @@ class Pool:
         args: Sequence[Any],
         kwargs: Dict[str, Any],
     ) -> TaskID:
+        """Add a new work item to the outgoing queue."""
         self.last_id += 1
         task_id = TaskID(self.last_id)
 
@@ -278,6 +286,7 @@ class Pool:
         return task_id
 
     async def results(self, tids: Sequence[TaskID]) -> Sequence[R]:
+        """Wait for all tasks to complete, and return results, preserving order."""
         pending = set(tids)
         ready: Dict[TaskID, R] = {}
 
@@ -297,6 +306,7 @@ class Pool:
         args: Sequence[Any] = None,
         kwds: Dict[str, Any] = None,
     ) -> R:
+        """Run a single coroutine on the pool."""
         if not self.running:
             raise RuntimeError(f"pool is closed")
 
@@ -313,6 +323,7 @@ class Pool:
         iterable: Sequence[T],
         # chunksize: int = None,  # todo: implement chunking maybe
     ) -> Sequence[R]:
+        """Run a coroutine once for each item in the iterable."""
         if not self.running:
             raise RuntimeError(f"pool is closed")
 
@@ -325,6 +336,7 @@ class Pool:
         iterable: Sequence[Sequence[T]],
         # chunksize: int = None,  # todo: implement chunking maybe
     ) -> Sequence[R]:
+        """Run a coroutine once for each sequence of items in the iterable."""
         if not self.running:
             raise RuntimeError(f"pool is closed")
 
@@ -332,11 +344,13 @@ class Pool:
         return await self.results(tids)
 
     def close(self) -> None:
+        """Close the pool to new visitors."""
         self.running = False
         for _ in range(self.process_count):
             self.tx_queue.put_nowait(None)
 
     def terminate(self) -> None:
+        """No running by the pool!"""
         if self.running:
             self.close()
 
@@ -344,6 +358,7 @@ class Pool:
             process.terminate()
 
     async def join(self) -> None:
+        """Wait for the pool to finish gracefully."""
         if self.running:
             raise RuntimeError(f"pool is still open")
 
