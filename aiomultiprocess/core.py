@@ -33,10 +33,12 @@ PoolResult = Tuple[TaskID, Union[R, BaseException]]
 # fork is unix default and most flexible, but uses more memory (ref counting breaks CoW)
 # see https://docs.python.org/3/library/multiprocessing.html#contexts-and-start-methods
 context = multiprocessing.get_context("fork")
+_manager = None
 
 log = logging.getLogger(__name__)
 
-_manager = None
+MAX_TASKS_PER_CHILD = 0  # number of tasks to execute before recycling a child process
+CHILD_CONCURRENCY = 16  # number of tasks to execute simultaneously per child process
 
 
 def get_manager() -> multiprocessing.managers.SyncManager:
@@ -156,8 +158,8 @@ class PoolWorker(Process):
         self,
         tx: multiprocessing.Queue,
         rx: multiprocessing.Queue,
-        ttl: int = 0,
-        concurrency: int = 8,
+        ttl: int = MAX_TASKS_PER_CHILD,
+        concurrency: int = CHILD_CONCURRENCY,
     ) -> None:
         super().__init__()
         self.concurrency = max(1, concurrency)
@@ -217,8 +219,8 @@ class Pool:
         processes: int = None,
         initializer: Callable[..., None] = None,  # pylint: disable=bad-whitespace
         initargs: Sequence[Any] = None,
-        maxtasksperchild: int = 0,
-        childconcurrency: int = 0,
+        maxtasksperchild: int = MAX_TASKS_PER_CHILD,
+        childconcurrency: int = CHILD_CONCURRENCY,
     ) -> None:
         self.process_count = max(1, processes or os.cpu_count())
         self.initializer = initializer
