@@ -9,8 +9,7 @@ release: lint test clean
 	python3 -m twine upload dist/*
 
 setup:
-	pip3 install -U mypy pylint twine
-	pip3 install black
+	pip3 install -U black mypy pylint twine
 
 black:
 	black aiomultiprocess tests
