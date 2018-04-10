@@ -188,6 +188,7 @@ class PoolWorker(Process):
                     running = False
 
                 tid, func, args, kwargs = task
+                log.debug(f"{self.name} running {tid}: {func}(*{args}, **{kwargs})")
                 future = asyncio.ensure_future(func(*args, **kwargs))
                 pending[future] = tid
 
@@ -207,6 +208,7 @@ class PoolWorker(Process):
                 except BaseException as e:
                     result = e
 
+                log.debug(f"{self.name} completed {tid}: {result}")
                 self.rx.put_nowait((tid, result))
                 completed += 1
 
