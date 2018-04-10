@@ -6,6 +6,6 @@ AsyncIO version of the standard multiprocessing module
 """
 
 __author__ = "John Reese"
-__version__ = "0.2.0"
+__version__ = "0.3.0"
 
 from .core import Pool, Process, Worker
