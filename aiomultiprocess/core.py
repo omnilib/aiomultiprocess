@@ -259,7 +259,10 @@ class Pool:
             # start new workers when slots are unfilled
             while self.running and len(self.processes) < self.process_count:
                 process = PoolWorker(
-                    self.tx_queue, self.rx_queue, self.maxtasksperchild
+                    self.tx_queue,
+                    self.rx_queue,
+                    self.maxtasksperchild,
+                    self.childconcurrency,
                 )
                 process.start()
                 self.processes.append(process)
