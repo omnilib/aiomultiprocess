@@ -6,4 +6,4 @@ import sys
 
 from .core import CoreTest
 
-logging.basicConfig(level=logging.DEBUG, stream=sys.stderr)
+logging.basicConfig(level=logging.INFO, stream=sys.stderr)
