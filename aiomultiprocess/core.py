@@ -150,38 +150,63 @@ class Worker(Process):
 
 
 class PoolWorker(Process):
+    """Individual worker process for the async pool."""
 
     def __init__(
-        self, tx: multiprocessing.Queue, rx: multiprocessing.Queue, maxtasks: int = None
+        self,
+        tx: multiprocessing.Queue,
+        rx: multiprocessing.Queue,
+        ttl: int = 0,
+        concurrency: int = 8,
     ) -> None:
         super().__init__()
-        self.maxtasks = min(1, maxtasks)
+        self.concurrency = max(1, concurrency)
+        self.ttl = max(0, ttl)
         self.tx = tx
         self.rx = rx
 
     async def run(self) -> None:
-        task_count = 0
-        while self.maxtasks < 1 or task_count < self.maxtasks:
-            try:
-                task: PoolTask = self.tx.get_nowait()
+        """Pick up work, execute work, return results, rinse, repeat."""
+        pending: Dict[asyncio.Future, TaskID] = {}
+        completed = 0
+        running = True
+        while running or pending:
+            # TTL, Tasks To Live, determines how many tasks to execute before dying
+            if self.ttl and completed >= self.ttl:
+                running = False
 
-            except queue.Empty:
-                await asyncio.sleep(0.05)
+            # pick up new work as long as we're "running" and we have open slots
+            while running and len(pending) < self.concurrency:
+                try:
+                    task: PoolTask = self.tx.get_nowait()
+                except queue.Empty:
+                    break
+
+                if task is None:
+                    running = False
+
+                tid, func, args, kwargs = task
+                future = asyncio.ensure_future(func(*args, **kwargs))
+                pending[future] = tid
+
+            if not pending:
+                await asyncio.sleep(0.005)
                 continue
 
-            if task is None:
-                break
+            # return results and/or exceptions when completed
+            done, _ = await asyncio.wait(
+                pending.keys(), timeout=0.05, return_when=asyncio.FIRST_COMPLETED
+            )
+            for future in done:
+                tid = pending.pop(future)
 
-            tid, func, args, kwargs = task
-            try:
-                result = (tid, await func(*args, **kwargs))
-                self.rx.put_nowait(result)
+                try:
+                    result = future.result()
+                except BaseException as e:
+                    result = e
 
-            except BaseException as e:
-                result = (tid, e)
-                self.rx.put_nowait(result)
-
-            task_count += 1
+                self.rx.put_nowait((tid, result))
+                completed += 1
 
 
 class Pool:
@@ -192,12 +217,14 @@ class Pool:
         processes: int = None,
         initializer: Callable[..., None] = None,  # pylint: disable=bad-whitespace
         initargs: Sequence[Any] = None,
-        maxtasksperchild: int = None,
+        maxtasksperchild: int = 0,
+        childconcurrency: int = 0,
     ) -> None:
-        self.process_count = processes or os.cpu_count()
+        self.process_count = max(1, processes or os.cpu_count())
         self.initializer = initializer
         self.initargs = initargs or ()
-        self.maxtasksperchild = min(0, maxtasksperchild or 0)
+        self.maxtasksperchild = max(0, maxtasksperchild)
+        self.childconcurrency = max(1, childconcurrency)
 
         self.processes: List[Process] = []
         self.tx_queue = context.Queue()
