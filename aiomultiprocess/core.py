@@ -104,12 +104,11 @@ class Process:
 
     async def join(self, timeout: int = None) -> None:
         """Wait for the process to finish execution without blocking the main thread."""
-        if timeout is not None:
-            try:
-                return await asyncio.wait_for(self.join(), timeout)
+        if not self.is_alive() and self.exitcode is None:
+            raise ValueError("must start process before joining it")
 
-            except asyncio.TimeoutError:
-                return
+        if timeout is not None:
+            return await asyncio.wait_for(self.join(), timeout)
 
         while self.exitcode is None:
             await asyncio.sleep(0.005)
@@ -146,7 +145,7 @@ class Worker(Process):
     def result(self) -> R:
         """Easy access to the resulting value from the coroutine."""
         if self.exitcode is None:
-            raise ValueError("coroutine not completed")
+            raise ValueError('coroutine not completed')
 
         return self.aio_namespace.result
 
