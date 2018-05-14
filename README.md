@@ -22,6 +22,11 @@ Gathering tens of thousands of network requests in seconds is as easy as:
     async with Pool() as pool:
         results = await pool.map(<coroutine>, <items>)
 
+For more context, watch the PyCon US 2018 talk about aiomultiprocess,
+["Thinking Outside the GIL"][pycon-2018]:
+
+<iframe width="800" height="450" src="https://www.youtube-nocookie.com/embed/0kXaLh8Fz3k?rel=0" frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe>
+
 
 Install
 -------
@@ -40,37 +45,39 @@ possible, while accounting for places that benefit from async functionality.
 
 Executing a coroutine on a child process is as simple as:
 
+    from aiohttp import request
     from aiomultiprocess import Process
 
-    async def foo(...):
-        ...
+    async def fetch(url):
+        return await request("GET", url)
 
-    p = Process(target=foo, args=..., kwargs=...)
+    p = Process(target=fetch, args="https://jreese.sh")
     p.start()
     await p.join()
 
-If you want to get results back from that coroutine, then use `Worker` instead:
+If you want to get results back from that coroutine, `Worker` makes that available:
 
+    from aiohttp import request
     from aiomultiprocess import Worker
 
-    async def foo(...):
-        ...
+    async def fetch(url):
+        return await request("GET", url)
 
-    p = Worker(target=foo, args=..., kwargs=...)
+    p = Worker(target=fetch, args="https://jreese.sh")
     p.start()
-    await p.join()
-
-    print(p.result)
+    response = await p.join()
 
 If you want a managed pool of worker processes, then use `Pool`:
 
+    from aiohttp import request
     from aiomultiprocess import Pool
 
-    async def foo(value):
-        return value * 2
+    async def fetch(url):
+        return await request("GET", url)
 
+    url = ["https://jreese.sh", ...]
     async with Pool() as pool:
-        result = await pool.map(foo, range(10))
+        result = await pool.map(fetch, urls)
 
 
 License
@@ -80,3 +87,6 @@ aiomultiprocess is copyright [John Reese](https://jreese.sh), and licensed under
 the MIT license.  I am providing code in this repository to you under an open
 source license.  This is my personal repository; the license you receive to
 my code is from me and not from my employer. See the `LICENSE` file for details.
+
+
+[pycon-2018]: https://www.youtube.com/watch?v=0kXaLh8Fz3k
