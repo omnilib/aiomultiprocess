@@ -79,7 +79,7 @@ class Process:
             group=group, target=self.run_async, name=name, daemon=daemon
         )
 
-    async def run(self) -> R:
+    async def run(self) -> None:
         """Override this method to add default behavior when `target` isn't given."""
         raise NotImplementedError()
 
@@ -127,7 +127,7 @@ class Worker(Process):
         self.aio_namespace = get_manager().Namespace()
         self.aio_namespace.result = None
 
-    async def run(self) -> R:
+    async def run(self) -> None:
         """Override this method to add default behavior when `target` isn't given."""
         raise NotImplementedError()
 
@@ -145,10 +145,10 @@ class Worker(Process):
     @property
     def result(self) -> R:
         """Easy access to the resulting value from the coroutine."""
-        if self.exitcode is not None:
-            return self.aio_namespace.result
+        if self.exitcode is None:
+            raise ValueError("coroutine not completed")
 
-        return None
+        return self.aio_namespace.result
 
 
 class PoolWorker(Process):
@@ -186,6 +186,7 @@ class PoolWorker(Process):
 
                 if task is None:
                     running = False
+                    break
 
                 tid, func, args, kwargs = task
                 log.debug(f"{self.name} running {tid}: {func}(*{args}, **{kwargs})")
@@ -224,7 +225,7 @@ class Pool:
         maxtasksperchild: int = MAX_TASKS_PER_CHILD,
         childconcurrency: int = CHILD_CONCURRENCY,
     ) -> None:
-        self.process_count = max(1, processes or os.cpu_count())
+        self.process_count = max(1, processes or os.cpu_count() or 2)
         self.initializer = initializer
         self.initargs = initargs or ()
         self.maxtasksperchild = max(0, maxtasksperchild)
