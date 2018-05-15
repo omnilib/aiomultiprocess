@@ -149,6 +149,7 @@ class Worker(Process):
             raise
 
     async def join(self, timeout: int = None) -> Any:
+        """Wait for the worker to finish, and return the final result."""
         await super().join(timeout)
         return self.result
 

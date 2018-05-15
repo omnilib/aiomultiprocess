@@ -39,6 +39,17 @@ class CoreTest(TestCase):
         self.assertFalse(p.is_alive())
 
     @async_test
+    async def test_process_timeout(self):
+        async def sleepy():
+            await asyncio.sleep(1)
+
+        p = amp.Process(target=sleepy)
+        p.start()
+
+        with self.assertRaises(asyncio.TimeoutError):
+            await p.join(timeout=0.01)
+
+    @async_test
     async def test_worker(self):
 
         async def sleepypid():
