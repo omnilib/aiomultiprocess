@@ -141,6 +141,10 @@ class Worker(Process):
             self.aio_namespace.result = e
             raise
 
+    async def join(self, timeout: int = None) -> Any:
+        await super().join(timeout)
+        return self.result
+
     @property
     def result(self) -> R:
         """Easy access to the resulting value from the coroutine."""
