@@ -52,14 +52,19 @@ class CoreTest(TestCase):
         self.assertFalse(p.is_alive())
         self.assertEqual(p.result, p.pid)
 
+    @async_test
+    async def test_worker_join(self):
+        async def sleepypid():
+            await asyncio.sleep(0.1)
+            return os.getpid()
+
         # test results from join
         p = amp.Worker(target=sleepypid)
         p.start()
         self.assertEqual(await p.join(), p.pid)
 
-        # test awaiting p directly
+        # test awaiting p directly, no need to start
         p = amp.Worker(target=sleepypid)
-        p.start()
         self.assertEqual(await p, p.pid)
 
     @async_test

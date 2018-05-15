@@ -80,7 +80,10 @@ class Process:
         )
 
     def __await__(self) -> Any:
-        """Enable awaiting of the process result by chaining to `join()`."""
+        """Enable awaiting of the process result by chaining to `start()` & `join()`."""
+        if not self.is_alive() and self.exitcode is None:
+            self.start()
+
         return self.join().__await__()
 
     async def run(self) -> None:
