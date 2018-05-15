@@ -52,8 +52,7 @@ Executing a coroutine on a child process is as simple as:
         return await request("GET", url)
 
     p = Process(target=fetch, args="https://jreese.sh")
-    p.start()
-    await p.join()
+    await p
 
 If you want to get results back from that coroutine, `Worker` makes that available:
 
@@ -64,8 +63,7 @@ If you want to get results back from that coroutine, `Worker` makes that availab
         return await request("GET", url)
 
     p = Worker(target=fetch, args="https://jreese.sh")
-    p.start()
-    response = await p.join()
+    response = await p
 
 If you want a managed pool of worker processes, then use `Pool`:
 
