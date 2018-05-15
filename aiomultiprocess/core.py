@@ -157,7 +157,7 @@ class Worker(Process):
     def result(self) -> R:
         """Easy access to the resulting value from the coroutine."""
         if self.exitcode is None:
-            raise ValueError('coroutine not completed')
+            raise ValueError("coroutine not completed")
 
         return self.aio_namespace.result
 
