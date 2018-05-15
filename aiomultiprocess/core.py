@@ -79,6 +79,10 @@ class Process:
             group=group, target=self.run_async, name=name, daemon=daemon
         )
 
+    def __await__(self) -> Any:
+        """Enable awaiting of the process result by chaining to `join()`."""
+        return self.join().__await__()
+
     async def run(self) -> None:
         """Override this method to add default behavior when `target` isn't given."""
         raise NotImplementedError()
@@ -149,7 +153,7 @@ class Worker(Process):
     def result(self) -> R:
         """Easy access to the resulting value from the coroutine."""
         if self.exitcode is None:
-            raise ValueError("coroutine not completed")
+            raise ValueError('coroutine not completed')
 
         return self.aio_namespace.result
 

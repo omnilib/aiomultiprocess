@@ -52,6 +52,16 @@ class CoreTest(TestCase):
         self.assertFalse(p.is_alive())
         self.assertEqual(p.result, p.pid)
 
+        # test results from join
+        p = amp.Worker(target=sleepypid)
+        p.start()
+        self.assertEqual(await p.join(), p.pid)
+
+        # test awaiting p directly
+        p = amp.Worker(target=sleepypid)
+        p.start()
+        self.assertEqual(await p, p.pid)
+
     @async_test
     async def test_pool_worker(self):
         tx = context.Queue()

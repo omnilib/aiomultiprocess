@@ -4,7 +4,7 @@
 import asyncio
 import time
 
-from unittest import TestCase
+from unittest import TestCase, skip
 
 import aiomultiprocess as amp
 
@@ -49,6 +49,7 @@ async def sleepy(duration):
 
 class PerfTest(TestCase):
 
+    @skip
     @async_test
     async def test_pool_concurrency(self):
         results = []
