@@ -25,7 +25,7 @@ Gathering tens of thousands of network requests in seconds is as easy as:
 For more context, watch the PyCon US 2018 talk about aiomultiprocess,
 ["Thinking Outside the GIL"][pycon-2018]:
 
-<iframe width="800" height="450" src="https://www.youtube-nocookie.com/embed/0kXaLh8Fz3k?rel=0" frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe>
+[![IMAGE ALT TEXT](http://img.youtube.com/vi/0kXaLh8Fz3k/0.jpg)](http://www.youtube.com/watch?v=0kXaLh8Fz3k "PyCon 2018 - John Reese - Thinking Outside the GIL with AsyncIO and Multiprocessing")
 
 
 Install
