@@ -26,7 +26,6 @@ PERF_SETS = [
 
 
 class Timer:
-
     def __init__(self):
         self.start = 0
         self.end = 0
@@ -48,7 +47,6 @@ async def sleepy(duration):
 
 
 class PerfTest(TestCase):
-
     @skip
     @async_test
     async def test_pool_concurrency(self):

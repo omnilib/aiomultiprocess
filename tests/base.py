@@ -7,7 +7,6 @@ from functools import wraps
 
 
 def async_test(fn):
-
     @wraps(fn)
     def wrapper(*args, **kwargs):
         loop = asyncio.get_event_loop()
