@@ -1,13 +1,21 @@
 language: python
+dist: xenial
+sudo: required
+env:
 python:
     - "3.6"
-    - "3.6-dev"
+    - "3.7"
     - "3.7-dev"
 install:
     - "make setup"
-script:
     - "pip install ."
-    - "make lint test"
+script:
+    - "make test"
 matrix:
     allow_failures:
         - python: "3.7-dev"
+    include:
+        - python: "3.6"
+          env: LINTING=true
+          script:
+              - "make lint test"
