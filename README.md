@@ -19,8 +19,10 @@ at once, limited only by the workload and number of cores available.
 
 Gathering tens of thousands of network requests in seconds is as easy as:
 
-    async with Pool() as pool:
-        results = await pool.map(<coroutine>, <items>)
+```python
+async with Pool() as pool:
+    results = await pool.map(<coroutine>, <items>)
+```
 
 For more context, watch the PyCon US 2018 talk about aiomultiprocess,
 ["Thinking Outside the GIL"][pycon-2018]:
@@ -34,7 +36,9 @@ Install
 aiomultiprocess requires Python 3.6 or newer.
 You can install it from PyPI:
 
-    $ pip3 install aiomultiprocess
+```bash session
+$ pip3 install aiomultiprocess
+```
 
 
 Usage
@@ -45,37 +49,43 @@ possible, while accounting for places that benefit from async functionality.
 
 Executing a coroutine on a child process is as simple as:
 
-    from aiohttp import request
-    from aiomultiprocess import Process
+```python
+from aiohttp import request
+from aiomultiprocess import Process
 
-    async def fetch(url):
-        return await request("GET", url)
+async def fetch(url):
+    return await request("GET", url)
 
-    p = Process(target=fetch, args="https://jreese.sh")
-    await p
+p = Process(target=fetch, args="https://jreese.sh")
+await p
+```
 
 If you want to get results back from that coroutine, `Worker` makes that available:
 
-    from aiohttp import request
-    from aiomultiprocess import Worker
+```python
+from aiohttp import request
+from aiomultiprocess import Worker
 
-    async def fetch(url):
-        return await request("GET", url)
+async def fetch(url):
+    return await request("GET", url)
 
-    p = Worker(target=fetch, args="https://jreese.sh")
-    response = await p
+p = Worker(target=fetch, args="https://jreese.sh")
+response = await p
+```
 
 If you want a managed pool of worker processes, then use `Pool`:
 
-    from aiohttp import request
-    from aiomultiprocess import Pool
+```python
+from aiohttp import request
+from aiomultiprocess import Pool
 
-    async def fetch(url):
-        return await request("GET", url)
+async def fetch(url):
+    return await request("GET", url)
 
-    url = ["https://jreese.sh", ...]
-    async with Pool() as pool:
-        result = await pool.map(fetch, urls)
+url = ["https://jreese.sh", ...]
+async with Pool() as pool:
+    result = await pool.map(fetch, urls)
+```
 
 
 License
