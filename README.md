@@ -82,7 +82,7 @@ from aiomultiprocess import Pool
 async def fetch(url):
     return await request("GET", url)
 
-url = ["https://jreese.sh", ...]
+urls = ["https://jreese.sh", ...]
 async with Pool() as pool:
     result = await pool.map(fetch, urls)
 ```
