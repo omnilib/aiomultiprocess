@@ -3,7 +3,6 @@
 
 import asyncio
 import logging
-import multiprocessing
 import multiprocessing.managers
 import os
 import queue
@@ -382,3 +381,18 @@ class Pool:
             raise RuntimeError(f"pool is still open")
 
         await self._loop
+
+    async def reduce(
+        self,
+        map_func: Callable[[T], Awaitable[R]],
+        reduce_func: Callable[[T], Awaitable[R]],
+        iterable: Sequence[T],
+        # chunksize: int = None,  # todo: implement chunking maybe
+    ) -> Sequence[R]:
+        """Run a coroutine once for each item in the iterable."""
+        if not self.running:
+            raise RuntimeError(f"pool is closed")
+
+        pending = [self.queue_work(map_func, (item,), {}) for item in iterable]
+
+        return await reduce_func(self.results(pending))
