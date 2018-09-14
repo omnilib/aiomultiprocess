@@ -20,6 +20,10 @@ async def starmapper(*values):
     return [value * 2 for value in values]
 
 
+async def reducer(values):
+    return sum(await values)
+
+
 class CoreTest(TestCase):
     @async_test
     async def test_process(self):
@@ -106,3 +110,13 @@ class CoreTest(TestCase):
                 await pool.starmap(starmapper, [values[:4], values[4:]]),
                 [results[:4], results[4:]],
             )
+
+    @async_test
+    async def test_reduce(self):
+
+        numbers = [1, 2, 3]
+        expected = sum(numbers) * 2
+
+        async with amp.Pool() as pool:
+            result = await pool.reduce(mapper, reducer, numbers)
+            self.assertEqual(result, expected)
