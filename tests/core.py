@@ -21,7 +21,13 @@ async def starmapper(*values):
 
 
 async def reducer(values):
-    return sum(await values)
+    total = 0
+
+    async for value in values:
+        total += value
+        await asyncio.sleep(0)  # Let other tasks run.
+
+    return total
 
 
 class CoreTest(TestCase):

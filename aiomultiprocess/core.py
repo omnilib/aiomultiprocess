@@ -362,8 +362,18 @@ class Pool:
         if not self.running:
             raise RuntimeError(f"pool is closed")
 
-        pending = [self.queue_work(map_func, (item,), {}) for item in iterable]
-        return await reduce_func(self.results(pending))
+        pending = set(self.queue_work(map_func, (item,), {}) for item in iterable)
+
+        async def _reduce():
+            while pending:
+                for tid in pending.copy():
+                    if tid in self._results:
+                        pending.remove(tid)
+                        yield self._results.pop(tid)
+
+                await asyncio.sleep(0.005)
+
+        return await reduce_func(_reduce())
 
     async def starmap(
         self,
