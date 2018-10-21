@@ -348,6 +348,20 @@ class Pool:
         tids = [self.queue_work(func, (item,), {}) for item in iterable]
         return await self.results(tids)
 
+    async def map_reduce(
+        self,
+        map_func: Callable[[T], Awaitable[R]],
+        reduce_func: Callable[[T], Awaitable[R]],
+        iterable: Sequence[T],
+        # chunksize: int = None,  # todo: implement chunking maybe
+    ) -> Sequence[R]:
+        """Run a mapping coroutine for each item in the iterable, then run a reducing coroutine on the results."""
+        if not self.running:
+            raise RuntimeError(f"pool is closed")
+
+        pending = [self.queue_work(map_func, (item,), {}) for item in iterable]
+        return await reduce_func(self.results(pending))
+
     async def starmap(
         self,
         func: Callable[..., Awaitable[R]],
@@ -381,18 +395,3 @@ class Pool:
             raise RuntimeError(f"pool is still open")
 
         await self._loop
-
-    async def reduce(
-        self,
-        map_func: Callable[[T], Awaitable[R]],
-        reduce_func: Callable[[T], Awaitable[R]],
-        iterable: Sequence[T],
-        # chunksize: int = None,  # todo: implement chunking maybe
-    ) -> Sequence[R]:
-        """Run a coroutine once for each item in the iterable."""
-        if not self.running:
-            raise RuntimeError(f"pool is closed")
-
-        pending = [self.queue_work(map_func, (item,), {}) for item in iterable]
-
-        return await reduce_func(self.results(pending))

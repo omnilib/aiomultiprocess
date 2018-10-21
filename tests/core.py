@@ -112,11 +112,11 @@ class CoreTest(TestCase):
             )
 
     @async_test
-    async def test_reduce(self):
+    async def test_map_reduce(self):
 
         numbers = [1, 2, 3]
         expected = sum(numbers) * 2
 
         async with amp.Pool() as pool:
-            result = await pool.reduce(mapper, reducer, numbers)
+            result = await pool.map_reduce(mapper, reducer, numbers)
             self.assertEqual(result, expected)
