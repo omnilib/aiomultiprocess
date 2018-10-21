@@ -355,7 +355,10 @@ class Pool:
         iterable: Sequence[T],
         # chunksize: int = None,  # todo: implement chunking maybe
     ) -> Sequence[R]:
-        """Run a mapping coroutine for each item in the iterable, then run a reducing coroutine on the results."""
+        """
+        Run a mapping coroutine for each item in the iterable,
+        then run a reducing coroutine on the results.
+        """
         if not self.running:
             raise RuntimeError(f"pool is closed")
 
