@@ -133,6 +133,7 @@ disable=print-statement,
         global-statement,
         too-many-instance-attributes,
         logging-fstring-interpolation,
+        unused-argument,
         fixme
 
 # Enable the message, report, category or checker with the given id(s). You can

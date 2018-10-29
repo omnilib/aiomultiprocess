@@ -17,7 +17,7 @@ black:
 lint:
 	black --check aiomultiprocess tests
 	pylint --rcfile .pylint aiomultiprocess setup.py
-	-mypy --ignore-missing-imports --python-version 3.6 .
+	mypy --ignore-missing-imports --python-version 3.6 .
 
 test:
 	python3 -m unittest tests

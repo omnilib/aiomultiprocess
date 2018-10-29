@@ -20,6 +20,7 @@ from typing import (
     Tuple,
     TypeVar,
     Union,
+    cast,
 )
 
 T = TypeVar("T")
@@ -71,7 +72,7 @@ class Process:
             raise ValueError(f"initializer must be synchronous function")
 
         self.aio_init = initializer
-        self.aio_target = target or self.run
+        self.aio_target = target or self._run_wrapper
         self.aio_args = args or ()
         self.aio_kwargs = kwargs or {}
         self.aio_manager = get_manager()
@@ -89,6 +90,10 @@ class Process:
     async def run(self) -> None:
         """Override this method to add default behavior when `target` isn't given."""
         raise NotImplementedError()
+
+    async def _run_wrapper(self, *args, **kwargs) -> R:
+        """Wrapper around the run method to fix types with override/parameters."""
+        return cast(R, await self.run())
 
     def run_async(self) -> R:
         """Initialize the child process and event loop, then execute the coroutine."""
@@ -130,7 +135,7 @@ class Worker(Process):
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
-        self.aio_namespace = get_manager().Namespace()
+        self.aio_namespace: Any = get_manager().Namespace()
         self.aio_namespace.result = None
 
     async def run(self) -> None:
