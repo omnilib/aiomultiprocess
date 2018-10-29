@@ -56,7 +56,7 @@ class Process:
     def __init__(
         self,
         group: None = None,
-        target: Callable[..., Awaitable[R]] = None,  # pylint: disable=bad-whitespace
+        target: Callable[..., Awaitable[R]] = None,
         name: str = None,
         args: Sequence[Any] = None,
         kwargs: Dict[str, Any] = None,
@@ -231,7 +231,7 @@ class Pool:
     def __init__(
         self,
         processes: int = None,
-        initializer: Callable[..., None] = None,  # pylint: disable=bad-whitespace
+        initializer: Callable[..., None] = None,
         initargs: Sequence[Any] = None,
         maxtasksperchild: int = MAX_TASKS_PER_CHILD,
         childconcurrency: int = CHILD_CONCURRENCY,
