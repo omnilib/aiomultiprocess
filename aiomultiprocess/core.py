@@ -14,13 +14,13 @@ from typing import (
     Callable,
     Dict,
     List,
+    NamedTuple,
     NewType,
     Optional,
     Sequence,
     Tuple,
     TypeVar,
     Union,
-    cast,
 )
 
 T = TypeVar("T")
@@ -31,9 +31,10 @@ PoolTask = Optional[Tuple[TaskID, Callable[..., R], Sequence[T], Dict[str, T]]]
 PoolResult = Tuple[TaskID, Union[R, BaseException]]
 
 # shared context for all multiprocessing primitives
-# fork is unix default and most flexible, but uses more memory (ref counting breaks CoW)
+# "fork" is unix default and flexible, but uses more memory (ref counting breaks CoW)
+# "spawn" is windows default (and only option), but can't execute non-global functions
 # see https://docs.python.org/3/library/multiprocessing.html#contexts-and-start-methods
-context = multiprocessing.get_context("fork")
+context = multiprocessing.get_context()
 _manager = None
 
 log = logging.getLogger(__name__)
@@ -51,19 +52,41 @@ def get_manager() -> multiprocessing.managers.SyncManager:
     return _manager
 
 
+def set_context(method: Optional[str] = None) -> None:
+    """Set the context type for future process/pool objects."""
+    global context
+    context = multiprocessing.get_context(method)
+
+
+async def not_implemented(*args: Any, **kwargs: Any) -> None:
+    """Default function to call when none given."""
+    raise NotImplementedError()
+
+
+class Unit(NamedTuple):
+    """Container for what to call on the child process."""
+    target: Callable
+    args: Sequence[Any]
+    kwargs: Dict[str, Any]
+    namespace: Any
+    initializer: Optional[Callable] = None
+    runner: Optional[Callable] = None
+
+
 class Process:
     """Execute a coroutine on a separate process."""
 
     def __init__(
         self,
         group: None = None,
-        target: Callable[..., Awaitable[R]] = None,
+        target: Callable = None,
         name: str = None,
         args: Sequence[Any] = None,
         kwargs: Dict[str, Any] = None,
         *,
         daemon: bool = None,
-        initializer: Callable = None,
+        initializer: Optional[Callable] = None,
+        process_target: Optional[Callable] = None,
     ) -> None:
         if target is not None and not asyncio.iscoroutinefunction(target):
             raise ValueError(f"target must be coroutine function")
@@ -71,13 +94,19 @@ class Process:
         if initializer is not None and asyncio.iscoroutinefunction(initializer):
             raise ValueError(f"initializer must be synchronous function")
 
-        self.aio_init = initializer
-        self.aio_target = target or self._run_wrapper
-        self.aio_args = args or ()
-        self.aio_kwargs = kwargs or {}
-        self.aio_manager = get_manager()
+        self.unit = Unit(
+            target=target or not_implemented,
+            args=args or (),
+            kwargs=kwargs or {},
+            namespace=get_manager().Namespace(),
+            initializer=initializer,
+        )
         self.aio_process = context.Process(
-            group=group, target=self.run_async, name=name, daemon=daemon
+            group=group,
+            target=process_target or Process.run_async,
+            args=(self.unit,),
+            name=name,
+            daemon=daemon,
         )
 
     def __await__(self) -> Any:
@@ -87,32 +116,27 @@ class Process:
 
         return self.join().__await__()
 
-    async def run(self) -> None:
-        """Override this method to add default behavior when `target` isn't given."""
-        raise NotImplementedError()
-
-    async def _run_wrapper(self, *args, **kwargs) -> R:
-        """Wrapper around the run method to fix types with override/parameters."""
-        return cast(R, await self.run())
-
-    def run_async(self) -> R:
+    @staticmethod
+    def run_async(unit: Unit) -> R:
         """Initialize the child process and event loop, then execute the coroutine."""
         try:
-            if self.aio_init:
-                self.aio_init()
+            if unit.initializer:
+                unit.initializer()
 
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
 
-            result = loop.run_until_complete(
-                self.aio_target(*self.aio_args, **self.aio_kwargs)
-            )
+            result: R = loop.run_until_complete(unit.target(*unit.args, **unit.kwargs))
 
             return result
 
         except BaseException:
             log.exception(f"aio process {os.getpid()} failed")
             raise
+
+    def start(self) -> None:
+        """Start the child process."""
+        return self.aio_process.start()
 
     async def join(self, timeout: int = None) -> None:
         """Wait for the process to finish execution without blocking the main thread."""
@@ -125,32 +149,65 @@ class Process:
         while self.exitcode is None:
             await asyncio.sleep(0.005)
 
-    def __getattr__(self, name: str) -> Any:
-        """All other properties chain to the proxied Process object."""
-        return getattr(self.aio_process, name)
+    @property
+    def name(self) -> str:
+        """Child process name."""
+        return self.aio_process.name
+
+    def is_alive(self) -> bool:
+        """Is child process running."""
+        return self.aio_process.is_alive()
+
+    @property
+    def daemon(self) -> bool:
+        """Should child process be daemon."""
+        return self.aio_process.daemon
+
+    @daemon.setter
+    def daemon(self, value: bool) -> None:
+        """Should child process be daemon."""
+        self.aio_process.daemon = value
+
+    @property
+    def pid(self) -> Optional[int]:
+        """Process ID of child, or None if not started."""
+        return self.aio_process.pid
+
+    @property
+    def exitcode(self) -> Optional[int]:
+        """Exit code from child process, or None if still running."""
+        return self.aio_process.exitcode
+
+    def terminate(self) -> None:
+        """Send SIGTERM to child process."""
+        return self.aio_process.terminate()
+
+    def kill(self) -> None:
+        """Send SIGKILL to child process."""
+        return self.aio_process.kill()
+
+    def close(self) -> None:
+        """Clean up child process once finished."""
+        return self.aio_process.close()
 
 
 class Worker(Process):
     """Execute a coroutine on a separate process and return the result."""
 
     def __init__(self, *args, **kwargs) -> None:
-        super().__init__(*args, **kwargs)
-        self.aio_namespace: Any = get_manager().Namespace()
-        self.aio_namespace.result = None
+        super().__init__(*args, process_target=Worker.run_async, **kwargs)
+        self.unit.namespace.result = None
 
-    async def run(self) -> None:
-        """Override this method to add default behavior when `target` isn't given."""
-        raise NotImplementedError()
-
-    def run_async(self) -> R:
+    @staticmethod
+    def run_async(unit: Unit) -> R:
         """Initialize the child process and event loop, then execute the coroutine."""
         try:
-            result: R = super().run_async()
-            self.aio_namespace.result = result
+            result: R = Process.run_async(unit)
+            unit.namespace.result = result
             return result
 
         except BaseException as e:
-            self.aio_namespace.result = e
+            unit.namespace.result = e
             raise
 
     async def join(self, timeout: int = None) -> Any:
@@ -164,7 +221,7 @@ class Worker(Process):
         if self.exitcode is None:
             raise ValueError("coroutine not completed")
 
-        return self.aio_namespace.result
+        return self.unit.namespace.result
 
 
 class PoolWorker(Process):
@@ -177,7 +234,7 @@ class PoolWorker(Process):
         ttl: int = MAX_TASKS_PER_CHILD,
         concurrency: int = CHILD_CONCURRENCY,
     ) -> None:
-        super().__init__()
+        super().__init__(target=self.run)
         self.concurrency = max(1, concurrency)
         self.ttl = max(0, ttl)
         self.tx = tx

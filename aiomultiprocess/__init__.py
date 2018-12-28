@@ -8,4 +8,4 @@ AsyncIO version of the standard multiprocessing module
 __author__ = "John Reese"
 __version__ = "0.4.0"
 
-from .core import Pool, Process, Worker
+from .core import Pool, Process, Worker, set_context

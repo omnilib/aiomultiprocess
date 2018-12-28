@@ -12,6 +12,10 @@ from aiomultiprocess.core import context, PoolWorker
 from .base import async_test
 
 
+async def two():
+    return 2
+
+
 async def mapper(value):
     return value * 2
 
@@ -21,6 +25,9 @@ async def starmapper(*values):
 
 
 class CoreTest(TestCase):
+    def setUp(self):
+        amp.set_context("fork")
+
     @async_test
     async def test_process(self):
         async def sleepy():
@@ -106,3 +113,29 @@ class CoreTest(TestCase):
                 await pool.starmap(starmapper, [values[:4], values[4:]]),
                 [results[:4], results[4:]],
             )
+
+    @async_test
+    async def test_spawn_context(self):
+        with self.assertRaises(ValueError):
+            amp.set_context("foo")
+
+        async def inline(x):
+            return x
+
+        amp.set_context("spawn")
+
+        with self.assertRaises(AttributeError):
+            p = amp.Worker(target=inline, args=(1,), name="test_inline")
+            p.start()
+            await p.join()
+
+        p = amp.Worker(target=two, name="test_global")
+        p.start()
+        await p.join()
+
+        values = list(range(10))
+        results = [await mapper(i) for i in values]
+        async with amp.Pool(2) as pool:
+            self.assertEqual(await pool.map(mapper, values), results)
+
+        self.assertEqual(p.result, 2)
