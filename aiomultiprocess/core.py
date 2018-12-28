@@ -65,6 +65,7 @@ async def not_implemented(*args: Any, **kwargs: Any) -> None:
 
 class Unit(NamedTuple):
     """Container for what to call on the child process."""
+
     target: Callable
     args: Sequence[Any]
     kwargs: Dict[str, Any]
