@@ -29,6 +29,8 @@ For more context, watch the PyCon US 2018 talk about aiomultiprocess,
 
 > [![IMAGE ALT TEXT](http://img.youtube.com/vi/0kXaLh8Fz3k/0.jpg)](http://www.youtube.com/watch?v=0kXaLh8Fz3k "PyCon 2018 - John Reese - Thinking Outside the GIL with AsyncIO and Multiprocessing")
 
+Slides available at [Speaker Deck](https://speakerdeck.com/jreese/thinking-outside-the-gil-2).
+
 
 Install
 -------
@@ -50,41 +52,56 @@ possible, while accounting for places that benefit from async functionality.
 Executing a coroutine on a child process is as simple as:
 
 ```python
+import asyncio
 from aiohttp import request
 from aiomultiprocess import Process
 
-async def fetch(url):
-    return await request("GET", url)
+async def put(url, params):
+    async with request("PUT", url, params=params) as response:
+        pass
 
-p = Process(target=fetch, args="https://jreese.sh")
-await p
+async def main():
+    p = Process(target=put, args=("https://jreese.sh", ))
+    await p
+
+asyncio.run(main())
 ```
 
 If you want to get results back from that coroutine, `Worker` makes that available:
 
 ```python
+import asyncio
 from aiohttp import request
 from aiomultiprocess import Worker
 
-async def fetch(url):
-    return await request("GET", url)
+async def get(url):
+    async with request("GET", url) as response:
+        return await response.text("utf-8"))
 
-p = Worker(target=fetch, args="https://jreese.sh")
-response = await p
+async def main():
+    p = Worker(target=get, args=("https://jreese.sh", ))
+    response = await p
+
+asyncio.run(main())
 ```
 
 If you want a managed pool of worker processes, then use `Pool`:
 
 ```python
+import asyncio
 from aiohttp import request
 from aiomultiprocess import Pool
 
-async def fetch(url):
-    return await request("GET", url)
+async def get(url):
+    async with request("GET", url) as response:
+        return await response.text("utf-8"))
 
-urls = ["https://jreese.sh", ...]
-async with Pool() as pool:
-    result = await pool.map(fetch, urls)
+async def main():
+    urls = ["https://jreese.sh", ...]
+    async with Pool() as pool:
+        result = await pool.map(get, urls)
+
+asyncio.run(main())
 ```
 
 
