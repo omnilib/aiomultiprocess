@@ -76,7 +76,7 @@ from aiomultiprocess import Worker
 
 async def get(url):
     async with request("GET", url) as response:
-        return await response.text("utf-8"))
+        return await response.text("utf-8")
 
 async def main():
     p = Worker(target=get, args=("https://jreese.sh", ))
@@ -94,7 +94,7 @@ from aiomultiprocess import Pool
 
 async def get(url):
     async with request("GET", url) as response:
-        return await response.text("utf-8"))
+        return await response.text("utf-8")
 
 async def main():
     urls = ["https://jreese.sh", ...]
