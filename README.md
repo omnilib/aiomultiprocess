@@ -62,7 +62,7 @@ async def put(url, params):
         pass
 
 async def main():
-    p = Process(target=put, args=("https://jreese.sh", ))
+    p = Process(target=put, args=("https://jreese.sh", {}))
     await p
 
 asyncio.run(main())
@@ -80,7 +80,7 @@ async def get(url):
         return await response.text("utf-8")
 
 async def main():
-    p = Worker(target=get, args=("https://jreese.sh", ))
+    p = Worker(target=get, args=("https://jreese.sh", {}))
     response = await p
 
 asyncio.run(main())
