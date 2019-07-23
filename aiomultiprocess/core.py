@@ -71,6 +71,7 @@ class Unit(NamedTuple):
     kwargs: Dict[str, Any]
     namespace: Any
     initializer: Optional[Callable] = None
+    initargs: Sequence[Any] = ()
     runner: Optional[Callable] = None
 
 
@@ -87,6 +88,7 @@ class Process:
         *,
         daemon: bool = None,
         initializer: Optional[Callable] = None,
+        initargs: Sequence[Any] = (),
         process_target: Optional[Callable] = None,
     ) -> None:
         if target is not None and not asyncio.iscoroutinefunction(target):
@@ -101,6 +103,7 @@ class Process:
             kwargs=kwargs or {},
             namespace=get_manager().Namespace(),
             initializer=initializer,
+            initargs=initargs,
         )
         self.aio_process = context.Process(
             group=group,
@@ -122,7 +125,7 @@ class Process:
         """Initialize the child process and event loop, then execute the coroutine."""
         try:
             if unit.initializer:
-                unit.initializer()
+                unit.initializer(*unit.initargs)
 
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
@@ -234,8 +237,11 @@ class PoolWorker(Process):
         rx: multiprocessing.Queue,
         ttl: int = MAX_TASKS_PER_CHILD,
         concurrency: int = CHILD_CONCURRENCY,
+        *,
+        initializer: Optional[Callable] = None,
+        initargs: Sequence[Any] = (),
     ) -> None:
-        super().__init__(target=self.run)
+        super().__init__(target=self.run, initializer=initializer, initargs=initargs)
         self.concurrency = max(1, concurrency)
         self.ttl = max(0, ttl)
         self.tx = tx
@@ -295,13 +301,13 @@ class Pool:
         self,
         processes: int = None,
         initializer: Callable[..., None] = None,
-        initargs: Sequence[Any] = None,
+        initargs: Sequence[Any] = (),
         maxtasksperchild: int = MAX_TASKS_PER_CHILD,
         childconcurrency: int = CHILD_CONCURRENCY,
     ) -> None:
         self.process_count = max(1, processes or os.cpu_count() or 2)
         self.initializer = initializer
-        self.initargs = initargs or ()
+        self.initargs = initargs
         self.maxtasksperchild = max(0, maxtasksperchild)
         self.childconcurrency = max(1, childconcurrency)
 
@@ -338,6 +344,8 @@ class Pool:
                     self.rx_queue,
                     self.maxtasksperchild,
                     self.childconcurrency,
+                    initializer=self.initializer,
+                    initargs=self.initargs,
                 )
                 process.start()
                 self.processes.append(process)
