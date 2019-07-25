@@ -7,6 +7,7 @@ import multiprocessing
 import multiprocessing.managers
 import os
 import queue
+import sys
 
 from typing import (
     Any,
@@ -186,13 +187,16 @@ class Process:
         """Send SIGTERM to child process."""
         return self.aio_process.terminate()
 
-    def kill(self) -> None:
-        """Send SIGKILL to child process."""
-        return self.aio_process.kill()
+    # multiprocessing.Process methods added in 3.7
+    if sys.version_info >= (3, 7):
 
-    def close(self) -> None:
-        """Clean up child process once finished."""
-        return self.aio_process.close()
+        def kill(self) -> None:
+            """Send SIGKILL to child process."""
+            return self.aio_process.kill()
+
+        def close(self) -> None:
+            """Clean up child process once finished."""
+            return self.aio_process.close()
 
 
 class Worker(Process):
