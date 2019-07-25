@@ -29,7 +29,7 @@ setup(
         "Topic :: Software Development :: Libraries",
     ],
     license="MIT",
-    packages=["aiomultiprocess"],
+    packages=["aiomultiprocess", "aiomultiprocess.tests"],
     python_requires=">=3.6",
     setup_requires=["setuptools>=38.6.0"],
     install_requires=[],
