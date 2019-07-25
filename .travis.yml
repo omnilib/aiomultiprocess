@@ -10,7 +10,7 @@ install:
     - "make setup"
     - "pip install ."
 script:
-    - "make lint test"
+    - "make test lint"
 matrix:
     allow_failures:
         - python: "3.8-dev"
