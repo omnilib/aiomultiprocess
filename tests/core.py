@@ -24,6 +24,19 @@ async def starmapper(*values):
     return [value * 2 for value in values]
 
 
+DUMMY_CONSTANT = None
+
+
+def initializer(value):
+    global DUMMY_CONSTANT
+
+    DUMMY_CONSTANT = value
+
+
+async def get_dummy_constant():
+    return DUMMY_CONSTANT
+
+
 class CoreTest(TestCase):
     def setUp(self):
         amp.set_context("fork")
@@ -139,3 +152,9 @@ class CoreTest(TestCase):
             self.assertEqual(await pool.map(mapper, values), results)
 
         self.assertEqual(p.result, 2)
+
+    @async_test
+    async def test_initializer(self):
+        result = 10
+        async with amp.Pool(2, initializer=initializer, initargs=(result,)) as pool:
+            self.assertEqual(await pool.apply(get_dummy_constant, args=()), result)
