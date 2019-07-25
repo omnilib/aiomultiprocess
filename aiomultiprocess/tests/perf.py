@@ -3,13 +3,11 @@
 
 import asyncio
 import time
-
 from unittest import TestCase, skip
 
 import aiomultiprocess as amp
 
 from .base import async_test
-
 
 PERF_SETS = [
     # sleep, tasks, processes, concurrency

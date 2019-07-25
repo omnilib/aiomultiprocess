@@ -3,11 +3,10 @@
 
 import asyncio
 import os
-
 from unittest import TestCase
 
 import aiomultiprocess as amp
-from aiomultiprocess.core import context, PoolWorker
+from aiomultiprocess.core import PoolWorker, context
 
 from .base import async_test
 
