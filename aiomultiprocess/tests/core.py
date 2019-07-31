@@ -6,7 +6,7 @@ import os
 from unittest import TestCase
 
 import aiomultiprocess as amp
-from aiomultiprocess.core import PoolWorker, context
+from aiomultiprocess.core import PoolWorker, ProxyException, context
 
 from .base import async_test
 
@@ -34,6 +34,10 @@ def initializer(value):
 
 async def get_dummy_constant():
     return DUMMY_CONSTANT
+
+
+async def raise_fn():
+    raise RuntimeError("raising")
 
 
 class CoreTest(TestCase):
@@ -106,7 +110,7 @@ class CoreTest(TestCase):
         await asyncio.sleep(0.5)
         result = rx.get_nowait()
 
-        self.assertEqual(result, (1, 10))
+        self.assertEqual(result, (1, 10, None))
         self.assertFalse(worker.is_alive())  # maxtasks == 1
 
     @async_test
@@ -157,3 +161,9 @@ class CoreTest(TestCase):
         result = 10
         async with amp.Pool(2, initializer=initializer, initargs=(result,)) as pool:
             self.assertEqual(await pool.apply(get_dummy_constant, args=()), result)
+
+    @async_test
+    async def test_raise(self):
+        async with amp.Pool(2) as pool:
+            with self.assertRaises(ProxyException) as _:
+                await pool.apply(raise_fn, args=())
