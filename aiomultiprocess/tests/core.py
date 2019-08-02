@@ -167,3 +167,8 @@ class CoreTest(TestCase):
         async with amp.Pool(2) as pool:
             with self.assertRaises(ProxyException) as _:
                 await pool.apply(raise_fn, args=())
+
+    @async_test
+    async def test_none(self):
+        async with amp.Pool(2) as pool:
+            self.assertIsNone(await pool.apply(asyncio.sleep, args=(0,)))

@@ -396,8 +396,6 @@ class Pool:
                     result, tb = self._results.pop(tid)
                     if tb is not None:
                         raise ProxyException(tb)
-                    if result is None:
-                        raise Exception("Missing both result and exception")
                     ready[tid] = result
                     pending.remove(tid)
 
