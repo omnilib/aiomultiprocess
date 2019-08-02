@@ -327,7 +327,7 @@ class Pool:
 
         self.running = True
         self.last_id = 0
-        self._results: Dict[TaskID, Tuple[Optional[Any], Optional[TracebackStr]]] = {}
+        self._results: Dict[TaskID, Tuple[Any, Optional[TracebackStr]]] = {}
         self._loop = asyncio.ensure_future(self.loop())
 
     async def __aenter__(self) -> "Pool":
