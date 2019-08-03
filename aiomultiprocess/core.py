@@ -8,6 +8,7 @@ import multiprocessing.managers
 import os
 import queue
 import sys
+import traceback
 from typing import (
     Any,
     Awaitable,
@@ -20,7 +21,6 @@ from typing import (
     Sequence,
     Tuple,
     TypeVar,
-    Union,
 )
 
 T = TypeVar("T")
@@ -28,7 +28,8 @@ R = TypeVar("R")
 
 TaskID = NewType("TaskID", int)
 PoolTask = Optional[Tuple[TaskID, Callable[..., R], Sequence[T], Dict[str, T]]]
-PoolResult = Tuple[TaskID, Union[R, BaseException]]
+TracebackStr = str
+PoolResult = Tuple[TaskID, Optional[R], Optional[TracebackStr]]
 
 # shared context for all multiprocessing primitives
 # "fork" is unix default and flexible, but uses more memory (ref counting breaks CoW)
@@ -73,6 +74,10 @@ class Unit(NamedTuple):
     initializer: Optional[Callable] = None
     initargs: Sequence[Any] = ()
     runner: Optional[Callable] = None
+
+
+class ProxyException(Exception):
+    pass
 
 
 class Process:
@@ -287,13 +292,15 @@ class PoolWorker(Process):
             for future in done:
                 tid = pending.pop(future)
 
+                result = None
+                tb = None
                 try:
                     result = future.result()
-                except BaseException as e:
-                    result = e
+                except BaseException:
+                    tb = traceback.format_exc()
 
                 log.debug(f"{self.name} completed {tid}: {result}")
-                self.rx.put_nowait((tid, result))
+                self.rx.put_nowait((tid, result, tb))
                 completed += 1
 
 
@@ -320,7 +327,7 @@ class Pool:
 
         self.running = True
         self.last_id = 0
-        self._results: Dict[TaskID, Any] = {}
+        self._results: Dict[TaskID, Tuple[Any, Optional[TracebackStr]]] = {}
         self._loop = asyncio.ensure_future(self.loop())
 
     async def __aenter__(self) -> "Pool":
@@ -356,8 +363,8 @@ class Pool:
             # pull results into a shared dictionary for later retrieval
             while True:
                 try:
-                    task_id, value = self.rx_queue.get_nowait()
-                    self._results[task_id] = value
+                    task_id, value, tb = self.rx_queue.get_nowait()
+                    self._results[task_id] = value, tb
 
                 except queue.Empty:
                     break
@@ -386,7 +393,10 @@ class Pool:
         while pending:
             for tid in pending.copy():
                 if tid in self._results:
-                    ready[tid] = self._results.pop(tid)
+                    result, tb = self._results.pop(tid)
+                    if tb is not None:
+                        raise ProxyException(tb)
+                    ready[tid] = result
                     pending.remove(tid)
 
             await asyncio.sleep(0.005)
