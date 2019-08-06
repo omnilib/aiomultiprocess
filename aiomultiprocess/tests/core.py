@@ -3,6 +3,7 @@
 
 import asyncio
 import os
+import time
 from unittest import TestCase
 
 import aiomultiprocess as amp
@@ -190,3 +191,14 @@ class CoreTest(TestCase):
         with self.assertRaises(ValueError) as context:
             p = amp.Process(target=dummy, name="test_process", initializer=dummy)
             p.start()
+
+    @async_test
+    async def test_process_kill(self):
+        start = time.time()
+        async def kill(process):
+            await asyncio.sleep(0.5)
+            process.kill()
+
+        p = amp.Process(target=asyncio.sleep, args=(1,), name="test_process")
+        await asyncio.gather(*[kill(p), p])
+        self.assertLess(time.time() - start, 0.6)
