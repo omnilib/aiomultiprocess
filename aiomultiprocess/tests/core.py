@@ -163,6 +163,15 @@ class CoreTest(TestCase):
             self.assertEqual(await pool.apply(get_dummy_constant, args=()), result)
 
     @async_test
+    async def test_async_initializer(self):
+        async def sleepy():
+            await asyncio.sleep(0)
+
+        with self.assertRaises(ValueError) as context:
+            p = amp.Process(target=sleepy, name="test_process", initializer=sleepy)
+            p.start()
+
+    @async_test
     async def test_raise(self):
         async with amp.Pool(2) as pool:
             with self.assertRaises(ProxyException) as _:
@@ -172,3 +181,12 @@ class CoreTest(TestCase):
     async def test_none(self):
         async with amp.Pool(2) as pool:
             self.assertIsNone(await pool.apply(asyncio.sleep, args=(0,)))
+
+    @async_test
+    async def test_sync_target(self):
+        def dummy():
+            pass
+
+        with self.assertRaises(ValueError) as context:
+            p = amp.Process(target=dummy, name="test_process", initializer=dummy)
+            p.start()
