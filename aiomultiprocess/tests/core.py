@@ -168,7 +168,7 @@ class CoreTest(TestCase):
         async def sleepy():
             await asyncio.sleep(0)
 
-        with self.assertRaises(ValueError) as context:
+        with self.assertRaises(ValueError) as _:
             p = amp.Process(target=sleepy, name="test_process", initializer=sleepy)
             p.start()
 
@@ -188,13 +188,14 @@ class CoreTest(TestCase):
         def dummy():
             pass
 
-        with self.assertRaises(ValueError) as context:
+        with self.assertRaises(ValueError) as _:
             p = amp.Process(target=dummy, name="test_process", initializer=dummy)
             p.start()
 
     @async_test
     async def test_process_kill(self):
         start = time.time()
+
         async def kill(process):
             await asyncio.sleep(0.5)
             process.kill()
