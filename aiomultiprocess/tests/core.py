@@ -193,13 +193,13 @@ class CoreTest(TestCase):
             p.start()
 
     @async_test
-    async def test_process_kill(self):
+    async def test_process_terminate(self):
         start = time.time()
 
-        async def kill(process):
+        async def terminate(process):
             await asyncio.sleep(0.5)
-            process.kill()
+            process.terminate()
 
         p = amp.Process(target=asyncio.sleep, args=(1,), name="test_process")
-        await asyncio.gather(*[kill(p), p])
+        await asyncio.gather(*[terminate(p), p])
         self.assertLess(time.time() - start, 0.6)
