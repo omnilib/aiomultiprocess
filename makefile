@@ -27,7 +27,8 @@ lint:
 	python3 -m black --check aiomultiprocess
 
 test:
-	python3 -m coverage run -m aiomultiprocess.tests
+	python3 -m coverage run --concurrency=multiprocessing -m aiomultiprocess.tests
+	python3 -m coverage combine
 	python3 -m coverage report
 
 clean:

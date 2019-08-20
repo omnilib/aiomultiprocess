@@ -3,6 +3,7 @@
 
 import asyncio
 import os
+import time
 from unittest import TestCase
 
 import aiomultiprocess as amp
@@ -163,6 +164,15 @@ class CoreTest(TestCase):
             self.assertEqual(await pool.apply(get_dummy_constant, args=()), result)
 
     @async_test
+    async def test_async_initializer(self):
+        async def sleepy():
+            await asyncio.sleep(0)
+
+        with self.assertRaises(ValueError) as _:
+            p = amp.Process(target=sleepy, name="test_process", initializer=sleepy)
+            p.start()
+
+    @async_test
     async def test_raise(self):
         async with amp.Pool(2) as pool:
             with self.assertRaises(ProxyException) as _:
@@ -172,3 +182,24 @@ class CoreTest(TestCase):
     async def test_none(self):
         async with amp.Pool(2) as pool:
             self.assertIsNone(await pool.apply(asyncio.sleep, args=(0,)))
+
+    @async_test
+    async def test_sync_target(self):
+        def dummy():
+            pass
+
+        with self.assertRaises(ValueError) as _:
+            p = amp.Process(target=dummy, name="test_process", initializer=dummy)
+            p.start()
+
+    @async_test
+    async def test_process_terminate(self):
+        start = time.time()
+
+        async def terminate(process):
+            await asyncio.sleep(0.5)
+            process.terminate()
+
+        p = amp.Process(target=asyncio.sleep, args=(1,), name="test_process")
+        await asyncio.gather(*[terminate(p), p])
+        self.assertLess(time.time() - start, 0.6)
