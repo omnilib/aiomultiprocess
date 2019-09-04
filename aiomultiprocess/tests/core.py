@@ -27,7 +27,7 @@ async def starmapper(*values):
 DUMMY_CONSTANT = None
 
 
-def initializer(value):
+def initializer(_loop, value):
     global DUMMY_CONSTANT
 
     DUMMY_CONSTANT = value
@@ -165,7 +165,7 @@ class CoreTest(TestCase):
 
     @async_test
     async def test_async_initializer(self):
-        async def sleepy():
+        async def sleepy(_loop):
             await asyncio.sleep(0)
 
         with self.assertRaises(ValueError) as _:
@@ -185,7 +185,7 @@ class CoreTest(TestCase):
 
     @async_test
     async def test_sync_target(self):
-        def dummy():
+        def dummy(_loop):
             pass
 
         with self.assertRaises(ValueError) as _:
