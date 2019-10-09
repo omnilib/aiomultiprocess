@@ -27,7 +27,7 @@ async def starmapper(*values):
 DUMMY_CONSTANT = None
 
 
-def initializer(_loop, value):
+def initializer(value):
     global DUMMY_CONSTANT
 
     DUMMY_CONSTANT = value
@@ -165,12 +165,21 @@ class CoreTest(TestCase):
 
     @async_test
     async def test_async_initializer(self):
-        async def sleepy(_loop):
+        async def sleepy():
             await asyncio.sleep(0)
 
         with self.assertRaises(ValueError) as _:
             p = amp.Process(target=sleepy, name="test_process", initializer=sleepy)
             p.start()
+
+    @async_test
+    async def test_loop_in_initializer(self):
+        def dummy():
+            _loop = asyncio.get_event_loop()
+
+        p = amp.Process(target=two, name="test_process", initializer=dummy)
+        p.start()
+        await p.join()
 
     @async_test
     async def test_raise(self):
@@ -185,7 +194,7 @@ class CoreTest(TestCase):
 
     @async_test
     async def test_sync_target(self):
-        def dummy(_loop):
+        def dummy():
             pass
 
         with self.assertRaises(ValueError) as _:

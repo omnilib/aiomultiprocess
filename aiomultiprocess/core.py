@@ -133,7 +133,7 @@ class Process:
             asyncio.set_event_loop(loop)
 
             if unit.initializer:
-                unit.initializer(loop, *unit.initargs)
+                unit.initializer(*unit.initargs)
 
             result: R = loop.run_until_complete(unit.target(*unit.args, **unit.kwargs))
 
