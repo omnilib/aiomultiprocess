@@ -11,12 +11,12 @@ __version__ = "0.6.1"
 from .core import (
     Pool,
     Process,
-    Worker,
-    set_context,
-    set_start_method
+    QueueID,
+    RandomScheduler,
     ShardedPool,
     ShardedPoolSchedulerBase,
-    RandomScheduler,
-    QueueID,
     TaskID,
+    Worker,
+    set_context,
+    set_start_method,
 )
