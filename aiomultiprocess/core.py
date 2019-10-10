@@ -9,6 +9,7 @@ import os
 import queue
 import sys
 import traceback
+from random import choice
 from typing import (
     Any,
     Awaitable,
@@ -22,6 +23,7 @@ from typing import (
     Tuple,
     TypeVar,
 )
+
 
 T = TypeVar("T")
 R = TypeVar("R")
@@ -492,3 +494,102 @@ class Pool:
             raise RuntimeError(f"pool is still open")
 
         await self._loop
+
+
+class _QueueWithPID(NamedTuple):
+    queue: multiprocessing.Queue
+    pid: int
+
+
+class ShardedPool(Pool):
+    def __init__(
+        self,
+        processes: int = None,
+        initializer: Callable[..., None] = None,
+        initargs: Sequence[Any] = (),
+        maxtasksperchild: int = MAX_TASKS_PER_CHILD,
+        childconcurrency: int = CHILD_CONCURRENCY,
+    ) -> None:
+        # `loop` is scheduled by `ensure_future`, but we haven't given up control,
+        # spawn processes before `loop` runs, so tx_queues will be populated,
+        # `queue_work` will fail if `tx_queues` is empty
+        super().__init__(
+            processes, initializer, initargs, maxtasksperchild, childconcurrency
+        )
+        del self.tx_queue
+
+        self.tx_queues_with_pid: List[_QueueWithPID] = []
+        self.pid_to_qid: Dict[int, int] = {}
+        self._populate_processes()
+
+    async def loop(self) -> None:
+        """Maintain the pool of workers while open."""
+        while self.processes or self.running:
+            # clean up workers that reached TTL, new processes will reuse queues
+            outstanding_queues: List[int] = []
+            for process in self.processes:
+                if not process.is_alive():
+                    outstanding_queues.append(self.pid_to_qid.pop(process.pid))
+                    self.processes.remove(process)
+
+            # start new workers when slots are unfilled
+            self._populate_processes(outstanding_queues)
+
+            # pull results into a shared dictionary for later retrieval
+            while True:
+                try:
+                    task_id, value, tb = self.rx_queue.get_nowait()
+                    # TODO: notify scheduler that task is finished
+                    self._results[task_id] = value, tb
+
+                except queue.Empty:
+                    break
+
+            # let someone else do some work for once
+            await asyncio.sleep(0.005)
+
+    def _populate_processes(self, outstanding_queues: List[int] = []):
+        while self.running and len(self.processes) < self.process_count:
+            if outstanding_queues:
+                qid = outstanding_queues.pop()
+                tx_queue = self.tx_queues_with_pid[qid].queue
+            else:
+                # TODO: register new queue to scheduler
+                qid = len(self.tx_queues_with_pid)
+                tx_queue = context.Queue()
+                self.tx_queues_with_pid.append(_QueueWithPID(tx_queue, 0))
+
+            process = PoolWorker(
+                tx_queue,
+                self.rx_queue,
+                self.maxtasksperchild,
+                self.childconcurrency,
+                initializer=self.initializer,
+                initargs=self.initargs,
+            )
+            process.start()
+            self.processes.append(process)
+            pid = process.pid
+            self.tx_queues_with_pid[qid] = _QueueWithPID(tx_queue, pid)
+            self.pid_to_qid[pid] = qid
+
+    def queue_work(
+        self,
+        func: Callable[..., Awaitable[R]],
+        args: Sequence[Any],
+        kwargs: Dict[str, Any],
+    ) -> TaskID:
+        """Add a new work item to the outgoing queue."""
+        self.last_id += 1
+        task_id = TaskID(self.last_id)
+
+        # TODO: this is where the scheduling logic comes in
+        qid = choice(list(range(len(self.tx_queues_with_pid))))
+        self.tx_queues_with_pid[qid].queue.put_nowait((task_id, func, args, kwargs))
+        return task_id
+
+    def close(self) -> None:
+        """Close the pool to new visitors."""
+        self.running = False
+        for tx_queue in self.tx_queues_with_pid:
+            tx_queue.queue.put_nowait(None)

@@ -249,6 +249,34 @@ class CoreTest(TestCase):  # pylint: disable=too-many-public-methods
             self.assertEqual(await pool.map(mapper, values), results)
 
     @async_test
+    async def test_sharded_pool(self):
+        values = list(range(10))
+        results = [await mapper(i) for i in values]
+
+        async with amp.ShardedPool(2) as pool:
+            await asyncio.sleep(0.5)
+            self.assertEqual(pool.process_count, 2)
+            self.assertEqual(len(pool.processes), 2)
+
+            self.assertEqual(await pool.apply(mapper, (values[0],)), results[0])
+            self.assertEqual(await pool.map(mapper, values), results)
+            self.assertEqual(
+                await pool.starmap(starmapper, [values[:4], values[4:]]),
+                [results[:4], results[4:]],
+            )
+
+    def test_sharded_pool_process_ttl(self):
+        async def _test_sharded_pool_process_ttl():
+            values = list(range(100))
+            results = [await mapper(i) for i in values]
+
+            async with amp.ShardedPool(2, maxtasksperchild=10) as pool:
+                self.assertEqual(await pool.map(mapper, values), results)
+
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(_test_sharded_pool_process_ttl())
+
+    @async_test
     async def test_set_start_method(self):
         with self.assertRaises(ValueError):
             amp.set_start_method("foo")
