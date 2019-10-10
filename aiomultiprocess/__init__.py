@@ -16,7 +16,7 @@ from .core import (
     set_start_method
     ShardedPool,
     ShardedPoolSchedulerBase,
-    RandomSchedular,
+    RandomScheduler,
     QueueID,
     TaskID,
 )
