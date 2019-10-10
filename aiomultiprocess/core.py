@@ -9,6 +9,7 @@ import os
 import queue
 import sys
 import traceback
+from abc import ABC, abstractmethod
 from random import choice
 from typing import (
     Any,
@@ -29,6 +30,7 @@ T = TypeVar("T")
 R = TypeVar("R")
 
 TaskID = NewType("TaskID", int)
+QueueID = NewType("QueueID", int)
 PoolTask = Optional[Tuple[TaskID, Callable[..., R], Sequence[T], Dict[str, T]]]
 TracebackStr = str
 PoolResult = Tuple[TaskID, Optional[R], Optional[TracebackStr]]
@@ -496,14 +498,72 @@ class Pool:
         await self._loop
 
 
+class ShardedPoolSchedulerBase(ABC):
+    @abstractmethod
+    def register_qid(self, qid: QueueID) -> None:
+        """
+        Notify the scheduler when the pool created a new queue.
+        """
+        ...
+
+    @abstractmethod
+    def schedule_task(
+        self,
+        task_id: TaskID,
+        func: Callable[..., Awaitable[R]],
+        args: Sequence[Any],
+        kwargs: Dict[str, Any],
+    ) -> QueueID:
+        """
+        The process pool will ask for a queue id to queue the task in,
+        you can safely assume that the task be scheduled, so no callback is needed.
+        """
+        ...
+
+    @abstractmethod
+    def task_done(self, task_id: TaskID) -> None:
+        """
+        A callback when the task is finished,
+        and result is picked up by main process again.
+        """
+        ...
+
+
+class RandomSchedular(ShardedPoolSchedulerBase):
+    def __init__(self) -> None:
+        super().__init__()
+        self.qids: List[QueueID] = []
+
+    def register_qid(self, qid: QueueID) -> None:
+        self.qids.append(qid)
+
+    def schedule_task(
+        self,
+        task_id: TaskID,
+        func: Callable[..., Awaitable[R]],
+        args: Sequence[Any],
+        kwargs: Dict[str, Any],
+    ) -> QueueID:
+        return choice(self.qids)
+
+    def task_done(self, _task_id: TaskID) -> None:
+        pass
+
+
 class _QueueWithPID(NamedTuple):
     queue: multiprocessing.Queue
     pid: int
 
 
 class ShardedPool(Pool):
+    """
+    Execute coroutines on a pool of child processes,
+    where each having a dedicated queue, support custom scheduling.
+    """
+
     def __init__(
         self,
+        scheduler: ShardedPoolSchedulerBase,
         processes: int = None,
         initializer: Callable[..., None] = None,
         initargs: Sequence[Any] = (),
@@ -518,15 +578,16 @@ class ShardedPool(Pool):
         )
         del self.tx_queue
 
+        self.scheduler = scheduler
         self.tx_queues_with_pid: List[_QueueWithPID] = []
-        self.pid_to_qid: Dict[int, int] = {}
+        self.pid_to_qid: Dict[int, QueueID] = {}
         self._populate_processes()
 
     async def loop(self) -> None:
         """Maintain the pool of workers while open."""
         while self.processes or self.running:
             # clean up workers that reached TTL, new processes will reuse queues
-            outstanding_queues: List[int] = []
+            outstanding_queues: List[QueueID] = []
             for process in self.processes:
                 if not process.is_alive():
                     outstanding_queues.append(self.pid_to_qid.pop(process.pid))
@@ -539,8 +600,8 @@ class ShardedPool(Pool):
             while True:
                 try:
                     task_id, value, tb = self.rx_queue.get_nowait()
-                    # TODO: notify scheduler that task is finished
                     self._results[task_id] = value, tb
+                    self.scheduler.task_done(task_id)
 
                 except queue.Empty:
                     break
@@ -548,16 +609,16 @@ class ShardedPool(Pool):
             # let someone else do some work for once
             await asyncio.sleep(0.005)
 
-    def _populate_processes(self, outstanding_queues: List[int] = []):
+    def _populate_processes(self, outstanding_queues: List[QueueID] = []):
         while self.running and len(self.processes) < self.process_count:
             if outstanding_queues:
                 qid = outstanding_queues.pop()
                 tx_queue = self.tx_queues_with_pid[qid].queue
             else:
-                # TODO: register new queue to scheduler
                 qid = len(self.tx_queues_with_pid)
                 tx_queue = context.Queue()
                 self.tx_queues_with_pid.append(_QueueWithPID(tx_queue, 0))
+                self.scheduler.register_qid(qid)
 
             process = PoolWorker(
                 tx_queue,
@@ -583,8 +644,7 @@ class ShardedPool(Pool):
         self.last_id += 1
         task_id = TaskID(self.last_id)
 
-        # TODO: this is where the scheduling logic comes in
-        qid = choice(list(range(len(self.tx_queues_with_pid))))
+        qid = self.scheduler.schedule_task(task_id, func, args, kwargs)
         self.tx_queues_with_pid[qid].queue.put_nowait((task_id, func, args, kwargs))
         return task_id
 
