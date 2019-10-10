@@ -8,4 +8,15 @@ AsyncIO version of the standard multiprocessing module
 __author__ = "John Reese"
 __version__ = "0.6.1"
 
-from .core import Pool, Process, Worker, set_context, set_start_method, ShardedPool
+from .core import (
+    Pool,
+    Process,
+    Worker,
+    set_context,
+    set_start_method
+    ShardedPool,
+    ShardedPoolSchedulerBase,
+    RandomSchedular,
+    QueueID,
+    TaskID,
+)
