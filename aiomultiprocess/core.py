@@ -551,7 +551,15 @@ class RandomScheduler(ShardedPoolSchedulerBase):
 
 class _QueueWithPID(NamedTuple):
     queue: multiprocessing.Queue
-    pid: int
+    pid: Optional[int]
+
+
+class FailedToStartProcessError(Exception):
+    pass
+
+
+class BrokenShardedPoolException(Exception):
+    pass
 
 
 class ShardedPool(Pool):
@@ -589,6 +597,8 @@ class ShardedPool(Pool):
             outstanding_queues: List[QueueID] = []
             for process in self.processes:
                 if not process.is_alive():
+                    if process.pid not in self.pid_to_qid:
+                        raise BrokenShardedPoolException()
                     outstanding_queues.append(self.pid_to_qid.pop(process.pid))
                     self.processes.remove(process)
 
@@ -608,15 +618,15 @@ class ShardedPool(Pool):
             # let someone else do some work for once
             await asyncio.sleep(0.005)
 
-    def _populate_processes(self, outstanding_queues: List[QueueID] = []):
+    def _populate_processes(self, outstanding_queues: Optional[List[QueueID]] = None):
         while self.running and len(self.processes) < self.process_count:
             if outstanding_queues:
                 qid = outstanding_queues.pop()
                 tx_queue = self.tx_queues_with_pid[qid].queue
             else:
-                qid = len(self.tx_queues_with_pid)
+                qid = QueueID(len(self.tx_queues_with_pid))
                 tx_queue = context.Queue()
-                self.tx_queues_with_pid.append(_QueueWithPID(tx_queue, 0))
+                self.tx_queues_with_pid.append(_QueueWithPID(tx_queue, None))
                 self.scheduler.register_qid(qid)
 
             process = PoolWorker(
@@ -630,8 +640,11 @@ class ShardedPool(Pool):
             process.start()
             self.processes.append(process)
             pid = process.pid
-            self.tx_queues_with_pid[qid] = _QueueWithPID(tx_queue, pid)
-            self.pid_to_qid[pid] = qid
+            if pid is not None:
+                self.tx_queues_with_pid[qid] = _QueueWithPID(tx_queue, pid)
+                self.pid_to_qid[pid] = qid
+            else:
+                raise FailedToStartProcessError()
 
     def queue_work(
         self,
