@@ -528,7 +528,7 @@ class ShardedPoolSchedulerBase(ABC):
         ...
 
 
-class RandomSchedular(ShardedPoolSchedulerBase):
+class RandomScheduler(ShardedPoolSchedulerBase):
     def __init__(self) -> None:
         super().__init__()
         self.qids: List[QueueID] = []
