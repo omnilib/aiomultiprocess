@@ -549,11 +549,6 @@ class RandomScheduler(ShardedPoolSchedulerBase):
         pass
 
 
-class _QueueWithPID(NamedTuple):
-    queue: multiprocessing.Queue
-    pid: Optional[int]
-
-
 class FailedToStartProcessError(Exception):
     pass
 
@@ -586,7 +581,7 @@ class ShardedPool(Pool):
         del self.tx_queue
 
         self.scheduler = scheduler
-        self.tx_queues_with_pid: List[_QueueWithPID] = []
+        self.tx_queues: List[multiprocessing.Queue] = []
         self.pid_to_qid: Dict[int, QueueID] = {}
         self._populate_processes()
 
@@ -622,11 +617,11 @@ class ShardedPool(Pool):
         while self.running and len(self.processes) < self.process_count:
             if outstanding_queues:
                 qid = outstanding_queues.pop()
-                tx_queue = self.tx_queues_with_pid[qid].queue
+                tx_queue = self.tx_queues[qid]
             else:
-                qid = QueueID(len(self.tx_queues_with_pid))
+                qid = QueueID(len(self.tx_queues))
                 tx_queue = context.Queue()
-                self.tx_queues_with_pid.append(_QueueWithPID(tx_queue, None))
+                self.tx_queues.append(tx_queue)
                 self.scheduler.register_qid(qid)
 
             process = PoolWorker(
@@ -640,11 +635,9 @@ class ShardedPool(Pool):
             process.start()
             self.processes.append(process)
             pid = process.pid
-            if pid is not None:
-                self.tx_queues_with_pid[qid] = _QueueWithPID(tx_queue, pid)
-                self.pid_to_qid[pid] = qid
-            else:
+            if pid is None:
                 raise FailedToStartProcessError()
+            self.pid_to_qid[pid] = qid
 
     def queue_work(
         self,
@@ -657,11 +650,11 @@ class ShardedPool(Pool):
         task_id = TaskID(self.last_id)
 
         qid = self.scheduler.schedule_task(task_id, func, args, kwargs)
-        self.tx_queues_with_pid[qid].queue.put_nowait((task_id, func, args, kwargs))
+        self.tx_queues[qid].put_nowait((task_id, func, args, kwargs))
         return task_id
 
     def close(self) -> None:
         """Close the pool to new visitors."""
         self.running = False
-        for tx_queue in self.tx_queues_with_pid:
-            tx_queue.queue.put_nowait(None)
+        for tx_queue in self.tx_queues:
+            tx_queue.put_nowait(None)
