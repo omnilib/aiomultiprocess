@@ -14,7 +14,7 @@ from .core import (
     QueueID,
     RandomScheduler,
     ShardedPool,
-    ShardedPoolSchedulerBase,
+    ShardedPoolScheduler,
     TaskID,
     Worker,
     set_context,

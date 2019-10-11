@@ -253,7 +253,7 @@ class CoreTest(TestCase):  # pylint: disable=too-many-public-methods
         values = list(range(10))
         results = [await mapper(i) for i in values]
 
-        async with amp.ShardedPool(amp.RandomScheduler(), 2) as pool:
+        async with amp.ShardedPool(2) as pool:
             await asyncio.sleep(0.5)
             self.assertEqual(pool.process_count, 2)
             self.assertEqual(len(pool.processes), 2)
@@ -271,7 +271,7 @@ class CoreTest(TestCase):  # pylint: disable=too-many-public-methods
             results = [await mapper(i) for i in values]
 
             async with amp.ShardedPool(
-                amp.RandomScheduler(), 2, maxtasksperchild=10
+                2, maxtasksperchild=10, scheduler=amp.RandomScheduler()
             ) as pool:
                 self.assertEqual(await pool.map(mapper, values), results)
 
