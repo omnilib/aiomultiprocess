@@ -374,26 +374,17 @@ class Pool:
             # clean up workers that reached TTL
             for process in self.processes:
                 if not process.is_alive():
+                    self._handle_dead_process(process)
                     self.processes.remove(process)
 
-            # start new workers when slots are unfilled
-            while self.running and len(self.processes) < self.process_count:
-                process = PoolWorker(
-                    self.tx_queue,
-                    self.rx_queue,
-                    self.maxtasksperchild,
-                    self.childconcurrency,
-                    initializer=self.initializer,
-                    initargs=self.initargs,
-                )
-                process.start()
-                self.processes.append(process)
+            self._populate_processes()
 
             # pull results into a shared dictionary for later retrieval
             while True:
                 try:
                     task_id, value, tb = self.rx_queue.get_nowait()
                     self._results[task_id] = value, tb
+                    self._task_done(task_id)
 
                 except queue.Empty:
                     break
@@ -411,7 +402,7 @@ class Pool:
         self.last_id += 1
         task_id = TaskID(self.last_id)
 
-        self.tx_queue.put_nowait((task_id, func, args, kwargs))
+        self._queue_work_impl(task_id, func, args, kwargs)
         return task_id
 
     async def results(self, tids: Sequence[TaskID]) -> Sequence[R]:
@@ -496,8 +487,37 @@ class Pool:
 
         await self._loop
 
+    def _handle_dead_process(self, process: Process) -> None:
+        pass
 
-class ShardedPoolSchedulerBase(ABC):
+    def _populate_processes(self) -> None:
+        # start new workers when slots are unfilled
+        while self.running and len(self.processes) < self.process_count:
+            process = PoolWorker(
+                self.tx_queue,
+                self.rx_queue,
+                self.maxtasksperchild,
+                self.childconcurrency,
+                initializer=self.initializer,
+                initargs=self.initargs,
+            )
+            process.start()
+            self.processes.append(process)
+
+    def _task_done(self, task_id: TaskID) -> None:
+        pass
+
+    def _queue_work_impl(
+        self,
+        task_id: TaskID,
+        func: Callable[..., Awaitable[R]],
+        args: Sequence[Any],
+        kwargs: Dict[str, Any],
+    ) -> None:
+        self.tx_queue.put_nowait((task_id, func, args, kwargs))
+
+
+class ShardedPoolScheduler(ABC):
     @abstractmethod
     def register_qid(self, qid: QueueID) -> None:
         """
@@ -516,6 +536,11 @@ class ShardedPoolSchedulerBase(ABC):
         """
         The process pool will ask for a queue id to queue the task in,
         you can safely assume that the task be scheduled, so no callback is needed.
+
+        `func`, `args` and `kwargs` are just the exact same arguments
+        that `queue_work` takes, not every scheduler would be benefit from this.
+        Example that they would be useful, highly customized schedule may want
+        to schedule according to function/arguments weights.
         """
         ...
 
@@ -528,7 +553,7 @@ class ShardedPoolSchedulerBase(ABC):
         ...
 
 
-class RandomScheduler(ShardedPoolSchedulerBase):
+class RandomScheduler(ShardedPoolScheduler):
     def __init__(self) -> None:
         super().__init__()
         self.qids: List[QueueID] = []
@@ -538,10 +563,10 @@ class RandomScheduler(ShardedPoolSchedulerBase):
 
     def schedule_task(
         self,
-        task_id: TaskID,
-        func: Callable[..., Awaitable[R]],
-        args: Sequence[Any],
-        kwargs: Dict[str, Any],
+        _task_id: TaskID,
+        _func: Callable[..., Awaitable[R]],
+        _args: Sequence[Any],
+        _kwargs: Dict[str, Any],
     ) -> QueueID:
         return choice(self.qids)
 
@@ -565,12 +590,12 @@ class ShardedPool(Pool):
 
     def __init__(
         self,
-        scheduler: ShardedPoolSchedulerBase,
         processes: int = None,
         initializer: Callable[..., None] = None,
         initargs: Sequence[Any] = (),
         maxtasksperchild: int = MAX_TASKS_PER_CHILD,
         childconcurrency: int = CHILD_CONCURRENCY,
+        scheduler: ShardedPoolScheduler = None,
     ) -> None:
         # `loop` is scheduled by `ensure_future`, but we haven't given up control,
         # spawn processes before `loop` runs, so tx_queues will be populated,
@@ -580,49 +605,37 @@ class ShardedPool(Pool):
         )
         del self.tx_queue
 
-        self.scheduler = scheduler
-        self.tx_queues: List[multiprocessing.Queue] = []
+        self.scheduler: ShardedPoolScheduler = scheduler or RandomScheduler()
+
+        self.last_qid = 0
+        self.tx_queues: Dict[QueueID, multiprocessing.Queue] = {}
+        for _ in range(self.process_count):
+            self.last_qid += 1
+            qid = QueueID(self.last_qid)
+            self.tx_queues[qid] = context.Queue()
+            self.scheduler.register_qid(qid)
+
         self.pid_to_qid: Dict[int, QueueID] = {}
+        self.outstanding_queues = list(self.tx_queues.keys())
         self._populate_processes()
 
-    async def loop(self) -> None:
-        """Maintain the pool of workers while open."""
-        while self.processes or self.running:
-            # clean up workers that reached TTL, new processes will reuse queues
-            outstanding_queues: List[QueueID] = []
-            for process in self.processes:
-                if not process.is_alive():
-                    if process.pid not in self.pid_to_qid:
-                        raise BrokenShardedPoolException()
-                    outstanding_queues.append(self.pid_to_qid.pop(process.pid))
-                    self.processes.remove(process)
+    def close(self) -> None:
+        """Close the pool to new visitors."""
+        self.running = False
+        for tx_queue in self.tx_queues.values():
+            tx_queue.put_nowait(None)
 
-            # start new workers when slots are unfilled
-            self._populate_processes(outstanding_queues)
+    def _handle_dead_process(self, process: Process) -> None:
+        if process.pid not in self.pid_to_qid:
+            raise BrokenShardedPoolException()
+        self.outstanding_queues.append(self.pid_to_qid.pop(process.pid))
 
-            # pull results into a shared dictionary for later retrieval
-            while True:
-                try:
-                    task_id, value, tb = self.rx_queue.get_nowait()
-                    self._results[task_id] = value, tb
-                    self.scheduler.task_done(task_id)
-
-                except queue.Empty:
-                    break
-
-            # let someone else do some work for once
-            await asyncio.sleep(0.005)
-
-    def _populate_processes(self, outstanding_queues: Optional[List[QueueID]] = None):
+    def _populate_processes(self):
         while self.running and len(self.processes) < self.process_count:
-            if outstanding_queues:
-                qid = outstanding_queues.pop()
-                tx_queue = self.tx_queues[qid]
-            else:
-                qid = QueueID(len(self.tx_queues))
-                tx_queue = context.Queue()
-                self.tx_queues.append(tx_queue)
-                self.scheduler.register_qid(qid)
+            if not self.outstanding_queues:
+                raise BrokenShardedPoolException()
+            qid = self.outstanding_queues.pop()
+            tx_queue = self.tx_queues[qid]
 
             process = PoolWorker(
                 tx_queue,
@@ -639,22 +652,15 @@ class ShardedPool(Pool):
                 raise FailedToStartProcessError()
             self.pid_to_qid[pid] = qid
 
-    def queue_work(
+    def _task_done(self, task_id: TaskID) -> None:
+        self.scheduler.task_done(task_id)
+
+    def _queue_work_impl(
         self,
+        task_id: TaskID,
         func: Callable[..., Awaitable[R]],
         args: Sequence[Any],
         kwargs: Dict[str, Any],
-    ) -> TaskID:
-        """Add a new work item to the outgoing queue."""
-        self.last_id += 1
-        task_id = TaskID(self.last_id)
-
+    ) -> None:
         qid = self.scheduler.schedule_task(task_id, func, args, kwargs)
         self.tx_queues[qid].put_nowait((task_id, func, args, kwargs))
-        return task_id
-
-    def close(self) -> None:
-        """Close the pool to new visitors."""
-        self.running = False
-        for tx_queue in self.tx_queues:
-            tx_queue.put_nowait(None)
