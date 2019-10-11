@@ -129,11 +129,11 @@ class Process:
     def run_async(unit: Unit) -> R:
         """Initialize the child process and event loop, then execute the coroutine."""
         try:
-            if unit.initializer:
-                unit.initializer(*unit.initargs)
-
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
+
+            if unit.initializer:
+                unit.initializer(*unit.initargs)
 
             result: R = loop.run_until_complete(unit.target(*unit.args, **unit.kwargs))
 

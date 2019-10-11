@@ -173,6 +173,15 @@ class CoreTest(TestCase):
             p.start()
 
     @async_test
+    async def test_loop_in_initializer(self):
+        def dummy():
+            _loop = asyncio.get_event_loop()
+
+        p = amp.Process(target=two, name="test_process", initializer=dummy)
+        p.start()
+        await p.join()
+
+    @async_test
     async def test_raise(self):
         async with amp.Pool(2) as pool:
             with self.assertRaises(ProxyException) as _:
