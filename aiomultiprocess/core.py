@@ -523,7 +523,6 @@ class ShardedPoolScheduler(ABC):
         """
         Notify the scheduler when the pool created a new queue.
         """
-        ...
 
     @abstractmethod
     def schedule_task(
@@ -542,7 +541,6 @@ class ShardedPoolScheduler(ABC):
         Example that they would be useful, highly customized schedule may want
         to schedule according to function/arguments weights.
         """
-        ...
 
     @abstractmethod
     def task_done(self, task_id: TaskID) -> None:
@@ -550,7 +548,6 @@ class ShardedPoolScheduler(ABC):
         A callback when the task is finished,
         and result is picked up by main process again.
         """
-        ...
 
 
 class RandomScheduler(ShardedPoolScheduler):
