@@ -76,6 +76,78 @@ class CoreTest(TestCase):
         self.assertFalse(p.is_alive())
 
     @async_test
+    async def test_process_join(self):
+        p = amp.Process(target=sleepy, name="test_process")
+
+        with self.assertRaisesRegex(ValueError, "must start process"):
+            await p.join()
+
+        p.start()
+        await p.join()
+        self.assertIsNotNone(p.exitcode)
+
+    @async_test
+    async def test_process_daemon(self):
+        p = amp.Process(daemon=False)
+        self.assertEqual(p.daemon, False)
+        p.daemon = True
+        self.assertEqual(p.daemon, True)
+
+        p = amp.Process(daemon=True)
+        self.assertEqual(p.daemon, True)
+        p.daemon = False
+        self.assertEqual(p.daemon, False)
+
+    @async_test
+    async def test_process_terminate(self):
+        start = time.time()
+        p = amp.Process(target=asyncio.sleep, args=(1,), name="test_process")
+        p.start()
+
+        p.terminate()
+        await p.join()
+        self.assertLess(p.exitcode, 0)
+        self.assertLess(time.time() - start, 0.6)
+
+    @async_test
+    async def test_process_kill(self):
+        p = amp.Process(target=sleepy)
+        p.start()
+
+        if sys.version_info >= (3, 7):
+            p.kill()
+            await p.join()
+            self.assertLess(p.exitcode, 0)
+
+        else:
+            with self.assertRaises(AttributeError):
+                p.kill()
+            await p.join()
+
+    @async_test
+    async def test_process_close(self):
+        p = amp.Process(target=sleepy)
+        p.start()
+
+        if sys.version_info >= (3, 7):
+            with self.assertRaises(ValueError):
+                self.assertIsNone(p.exitcode)
+                p.close()
+
+            await p.join()
+            self.assertIsNotNone(p.exitcode)
+
+            p.close()
+
+            with self.assertRaises(ValueError):
+                p.exitcode
+
+        else:
+            with self.assertRaises(AttributeError):
+                p.close()
+            await p.join()
+
+    @async_test
     async def test_process_timeout(self):
         p = amp.Process(target=sleepy)
         p.start()
@@ -87,6 +159,10 @@ class CoreTest(TestCase):
     async def test_worker(self):
         p = amp.Worker(target=sleepy)
         p.start()
+
+        with self.assertRaisesRegex(ValueError, "coroutine not completed"):
+            p.result
+
         await p.join()
 
         self.assertFalse(p.is_alive())
@@ -119,6 +195,25 @@ class CoreTest(TestCase):
         self.assertFalse(worker.is_alive())  # maxtasks == 1
 
     @async_test
+    async def test_pool_worker_stop(self):
+        tx = context.Queue()
+        rx = context.Queue()
+        worker = PoolWorker(tx, rx, 2)
+        worker.start()
+
+        self.assertTrue(worker.is_alive())
+        tx.put_nowait((1, mapper, (5,), {}))
+        await asyncio.sleep(0.5)
+        result = rx.get_nowait()
+
+        self.assertEqual(result, (1, 10, None))
+        self.assertTrue(worker.is_alive())  # maxtasks == 2
+
+        tx.put(None)
+        await worker.join(timeout=0.5)
+        self.assertFalse(worker.is_alive())
+
+    @async_test
     async def test_pool(self):
         values = list(range(10))
         results = [await mapper(i) for i in values]
@@ -143,14 +238,10 @@ class CoreTest(TestCase):
             return x
 
         with self.assertRaises(AttributeError):
-            p = amp.Worker(target=inline, args=(1,), name="test_inline")
-            p.start()
-            await p.join()
+            await amp.Worker(target=inline, args=(1,), name="test_inline")
 
-        p = amp.Worker(target=two, name="test_global")
-        p.start()
-        await p.join()
-        self.assertEqual(p.result, 2)
+        result = await amp.Worker(target=two, name="test_global")
+        self.assertEqual(result, 2)
 
         values = list(range(10))
         results = [await mapper(i) for i in values]
@@ -175,10 +266,8 @@ class CoreTest(TestCase):
             async def inline(x):
                 return x
 
-            p = amp.Worker(target=inline, args=(17,), name="test_inline")
-            p.start()
-            await p.join()
-            self.assertEqual(p.result, 17)
+            result = await amp.Worker(target=inline, args=(17,), name="test_inline")
+            self.assertEqual(result, 17)
 
     @patch("aiomultiprocess.core.set_start_method")
     @async_test
@@ -195,6 +284,10 @@ class CoreTest(TestCase):
 
     @async_test
     async def test_initializer(self):
+        p = amp.Process(target=sleepy, name="test_process", initializer=do_nothing)
+        p.start()
+        await p.join()
+
         result = 10
         async with amp.Pool(2, initializer=initializer, initargs=(result,)) as pool:
             self.assertEqual(await pool.apply(get_dummy_constant, args=()), result)
@@ -207,8 +300,13 @@ class CoreTest(TestCase):
 
     @async_test
     async def test_raise(self):
+        result = await amp.Worker(
+            target=raise_fn, name="test_process", initializer=do_nothing
+        )
+        self.assertIsInstance(result, RuntimeError)
+
         async with amp.Pool(2) as pool:
-            with self.assertRaises(ProxyException) as _:
+            with self.assertRaises(ProxyException):
                 await pool.apply(raise_fn, args=())
 
     @async_test
@@ -225,9 +323,6 @@ class CoreTest(TestCase):
             p.start()
 
     @async_test
-    async def test_process_terminate(self):
-        start = time.time()
-
-        p = amp.Process(target=asyncio.sleep, args=(1,), name="test_process")
-        await asyncio.gather(*[terminate(p), p])
-        self.assertLess(time.time() - start, 0.6)
+    async def test_not_implemented(self):
+        with self.assertRaises(NotImplementedError):
+            await amp.core.not_implemented()
