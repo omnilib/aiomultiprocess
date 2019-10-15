@@ -3,8 +3,10 @@
 
 import asyncio
 import os
+import sys
 import time
 from unittest import TestCase
+from unittest.mock import patch
 
 import aiomultiprocess as amp
 from aiomultiprocess.core import PoolWorker, ProxyException, context
@@ -12,8 +14,17 @@ from aiomultiprocess.core import PoolWorker, ProxyException, context
 from .base import async_test
 
 
+def do_nothing():
+    return
+
+
 async def two():
     return 2
+
+
+async def sleepy():
+    await asyncio.sleep(0.1)
+    return os.getpid()
 
 
 async def mapper(value):
@@ -31,6 +42,7 @@ def initializer(value):
     global DUMMY_CONSTANT
 
     DUMMY_CONSTANT = value
+    _loop = asyncio.get_event_loop()
 
 
 async def get_dummy_constant():
@@ -41,15 +53,18 @@ async def raise_fn():
     raise RuntimeError("raising")
 
 
+async def terminate(process):
+    await asyncio.sleep(0.5)
+    process.terminate()
+
+
 class CoreTest(TestCase):
     def setUp(self):
-        amp.set_context("fork")
+        # reset to default context before each test
+        amp.set_start_method()
 
     @async_test
     async def test_process(self):
-        async def sleepy():
-            await asyncio.sleep(0.1)
-
         p = amp.Process(target=sleepy, name="test_process")
         p.start()
 
@@ -62,9 +77,6 @@ class CoreTest(TestCase):
 
     @async_test
     async def test_process_timeout(self):
-        async def sleepy():
-            await asyncio.sleep(1)
-
         p = amp.Process(target=sleepy)
         p.start()
 
@@ -73,11 +85,7 @@ class CoreTest(TestCase):
 
     @async_test
     async def test_worker(self):
-        async def sleepypid():
-            await asyncio.sleep(0.1)
-            return os.getpid()
-
-        p = amp.Worker(target=sleepypid)
+        p = amp.Worker(target=sleepy)
         p.start()
         await p.join()
 
@@ -86,17 +94,13 @@ class CoreTest(TestCase):
 
     @async_test
     async def test_worker_join(self):
-        async def sleepypid():
-            await asyncio.sleep(0.1)
-            return os.getpid()
-
         # test results from join
-        p = amp.Worker(target=sleepypid)
+        p = amp.Worker(target=sleepy)
         p.start()
         self.assertEqual(await p.join(), p.pid)
 
         # test awaiting p directly, no need to start
-        p = amp.Worker(target=sleepypid)
+        p = amp.Worker(target=sleepy)
         self.assertEqual(await p, p.pid)
 
     @async_test
@@ -132,14 +136,11 @@ class CoreTest(TestCase):
             )
 
     @async_test
-    async def test_spawn_context(self):
-        with self.assertRaises(ValueError):
-            amp.set_context("foo")
+    async def test_spawn_method(self):
+        self.assertEqual(amp.core.context.get_start_method(), "spawn")
 
         async def inline(x):
             return x
-
-        amp.set_context("spawn")
 
         with self.assertRaises(AttributeError):
             p = amp.Worker(target=inline, args=(1,), name="test_inline")
@@ -149,13 +150,48 @@ class CoreTest(TestCase):
         p = amp.Worker(target=two, name="test_global")
         p.start()
         await p.join()
+        self.assertEqual(p.result, 2)
 
         values = list(range(10))
         results = [await mapper(i) for i in values]
         async with amp.Pool(2) as pool:
             self.assertEqual(await pool.map(mapper, values), results)
 
-        self.assertEqual(p.result, 2)
+    @async_test
+    async def test_set_start_method(self):
+        with self.assertRaises(ValueError):
+            amp.set_start_method("foo")
+
+        if sys.platform.startswith("win32"):
+            amp.set_start_method(None)
+            self.assertEqual(amp.core.context.get_start_method(), "spawn")
+
+            with self.assertRaises(ValueError):
+                amp.set_start_method("fork")
+
+        elif sys.platform.startswith("linux") or sys.platform.startswith("darwin"):
+            amp.set_start_method("fork")
+
+            async def inline(x):
+                return x
+
+            p = amp.Worker(target=inline, args=(17,), name="test_inline")
+            p.start()
+            await p.join()
+            self.assertEqual(p.result, 17)
+
+    @patch("aiomultiprocess.core.set_start_method")
+    @async_test
+    async def test_set_context(self, ssm_mock):
+        amp.set_context()
+        ssm_mock.assert_called_with(None)
+
+        amp.set_context("foo")
+        ssm_mock.assert_called_with("foo")
+
+        ssm_mock.side_effect = Exception("fake exception")
+        with self.assertRaisesRegex(Exception, "fake exception"):
+            amp.set_context("whatever")
 
     @async_test
     async def test_initializer(self):
@@ -165,21 +201,9 @@ class CoreTest(TestCase):
 
     @async_test
     async def test_async_initializer(self):
-        async def sleepy():
-            await asyncio.sleep(0)
-
         with self.assertRaises(ValueError) as _:
             p = amp.Process(target=sleepy, name="test_process", initializer=sleepy)
             p.start()
-
-    @async_test
-    async def test_loop_in_initializer(self):
-        def dummy():
-            _loop = asyncio.get_event_loop()
-
-        p = amp.Process(target=two, name="test_process", initializer=dummy)
-        p.start()
-        await p.join()
 
     @async_test
     async def test_raise(self):
@@ -194,20 +218,15 @@ class CoreTest(TestCase):
 
     @async_test
     async def test_sync_target(self):
-        def dummy():
-            pass
-
         with self.assertRaises(ValueError) as _:
-            p = amp.Process(target=dummy, name="test_process", initializer=dummy)
+            p = amp.Process(
+                target=do_nothing, name="test_process", initializer=do_nothing
+            )
             p.start()
 
     @async_test
     async def test_process_terminate(self):
         start = time.time()
-
-        async def terminate(process):
-            await asyncio.sleep(0.5)
-            process.terminate()
 
         p = amp.Process(target=asyncio.sleep, args=(1,), name="test_process")
         await asyncio.gather(*[terminate(p), p])

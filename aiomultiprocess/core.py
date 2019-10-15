@@ -31,17 +31,17 @@ PoolTask = Optional[Tuple[TaskID, Callable[..., R], Sequence[T], Dict[str, T]]]
 TracebackStr = str
 PoolResult = Tuple[TaskID, Optional[R], Optional[TracebackStr]]
 
-# shared context for all multiprocessing primitives
-# "fork" is unix default and flexible, but uses more memory (ref counting breaks CoW)
-# "spawn" is windows default (and only option), but can't execute non-global functions
+MAX_TASKS_PER_CHILD = 0  # number of tasks to execute before recycling a child process
+CHILD_CONCURRENCY = 16  # number of tasks to execute simultaneously per child process
+DEFAULT_START_METHOD = "spawn"
+
+# shared context for all multiprocessing primitives, for platform compatibility
+# "spawn" is default/required on windows and mac, but can't execute non-global functions
 # see https://docs.python.org/3/library/multiprocessing.html#contexts-and-start-methods
-context = multiprocessing.get_context()
+context = multiprocessing.get_context(DEFAULT_START_METHOD)
 _manager = None
 
 log = logging.getLogger(__name__)
-
-MAX_TASKS_PER_CHILD = 0  # number of tasks to execute before recycling a child process
-CHILD_CONCURRENCY = 16  # number of tasks to execute simultaneously per child process
 
 
 def get_manager() -> multiprocessing.managers.SyncManager:
@@ -53,10 +53,36 @@ def get_manager() -> multiprocessing.managers.SyncManager:
     return _manager
 
 
-def set_context(method: Optional[str] = None) -> None:
-    """Set the context type for future process/pool objects."""
+def set_start_method(method: Optional[str] = DEFAULT_START_METHOD) -> None:
+    """
+    Set the start method and context used for future processes/pools.
+
+    When given no parameters (`set_context()`), will default to using the "spawn" method
+    as this provides a predictable set of features and compatibility across all major
+    platforms, and trades a small cost on process startup for potentially large savings
+    on memory usage of child processes.
+
+    Passing an explicit string (eg, "fork") will force aiomultiprocess to use the given
+    start method instead of "spawn".
+
+    Passing an explicit `None` value will force aiomultiprocess to use CPython's default
+    start method for the current platform rather than defaulting to "spawn".
+
+    See the official multiprocessing documentation for details on start methods:
+    https://docs.python.org/3/library/multiprocessing.html#contexts-and-start-methods
+    """
     global context
     context = multiprocessing.get_context(method)
+
+
+def set_context(method: Optional[str] = None) -> None:
+    """
+    Set the start method and context used for future processes/pools. [DEPRECATED]
+
+    Retained for backwards compatibility, and to retain prior behavior of "no parameter"
+    resulting in selection of the platform's default start method.
+    """
+    return set_start_method(method)
 
 
 async def not_implemented(*args: Any, **kwargs: Any) -> None:
