@@ -58,7 +58,7 @@ async def terminate(process):
     process.terminate()
 
 
-class CoreTest(TestCase):
+class CoreTest(TestCase):  # pylint: disable=too-many-public-methods
     def setUp(self):
         # reset to default context before each test
         amp.set_start_method()
@@ -140,7 +140,7 @@ class CoreTest(TestCase):
             p.close()
 
             with self.assertRaises(ValueError):
-                p.exitcode
+                _ = p.exitcode
 
         else:
             with self.assertRaises(AttributeError):
@@ -161,7 +161,7 @@ class CoreTest(TestCase):
         p.start()
 
         with self.assertRaisesRegex(ValueError, "coroutine not completed"):
-            p.result
+            _ = p.result
 
         await p.join()
 
