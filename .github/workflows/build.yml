@@ -28,7 +28,7 @@ jobs:
         run: make lint
       - name: Coverage
         run: |
-          echo
+          codecov
           --token ${{ secrets.CODECOV_TOKEN }}
-          --branch ${{ env.GITHUB_REF }}
+          --branch ${{ github.ref }}
         continue-on-error: true
