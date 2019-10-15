@@ -3,8 +3,7 @@ aiomultiprocess
 
 Take a modern Python codebase to the next level of performance.
 
-[![build status](https://travis-ci.org/jreese/aiomultiprocess.svg?branch=master)](https://travis-ci.org/jreese/aiomultiprocess)
-[![windows build status](https://img.shields.io/appveyor/ci/jreese/aiomultiprocess.svg?branch=master&label=windows)](https://ci.appveyor.com/project/jreese/aiomultiprocess)
+[![build status](https://github.com/jreese/aiomultiprocess/workflows/Build/badge.svg)](https://github.com/jreese/aiomultiprocess/actions)
 [![code coverage](https://img.shields.io/codecov/c/gh/jreese/aiomultiprocess)](https://codecov.io/gh/jreese/aiomultiprocess)
 [![version](https://img.shields.io/pypi/v/aiomultiprocess.svg)](https://pypi.org/project/aiomultiprocess)
 [![license](https://img.shields.io/pypi/l/aiomultiprocess.svg)](https://github.com/jreese/aiomultiprocess/blob/master/LICENSE)
