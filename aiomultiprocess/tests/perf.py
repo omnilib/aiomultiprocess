@@ -3,23 +3,26 @@
 
 import asyncio
 import time
-from unittest import TestCase, skip
+from unittest import TestCase
 
 import aiomultiprocess as amp
 
-from .base import async_test
+from .base import perf_test
 
 PERF_SETS = [
     # sleep, tasks, processes, concurrency
-    (0.01, 100, 1, 1),
-    (0.01, 200, 2, 1),
-    (0.01, 400, 2, 2),
-    (0.01, 800, 2, 4),
-    (0.02, 800, 2, 8),
-    (0.02, 1600, 4, 8),
-    (0.04, 1600, 4, 16),
-    (0.08, 1600, 8, 16),
-    (0.08, 3200, 8, 32),
+    ((0,), 400, 4, 8),
+    ((0,), 800, 4, 16),
+    ((0,), 1600, 4, 32),
+    ((0,), 3200, 4, 64),
+    ((0.05,), 400, 4, 8),
+    ((0.05,), 800, 4, 16),
+    ((0.05,), 1600, 4, 32),
+    ((0.05,), 3200, 4, 64),
+    ((-0.002, 0.20, -0.002), 200, 4, 8),
+    ((-0.002, 0.20, -0.002), 400, 4, 16),
+    ((-0.002, 0.20, -0.002), 800, 4, 32),
+    ((-0.002, 0.20, -0.002), 1600, 4, 64),
 ]
 
 
@@ -40,13 +43,16 @@ class Timer:
         return self.end - self.start
 
 
-async def sleepy(duration):
-    await asyncio.sleep(duration)
+async def sleepy(durations):
+    for duration in durations:
+        if duration >= 0:
+            await asyncio.sleep(duration)
+        else:
+            time.sleep(-duration)
 
 
 class PerfTest(TestCase):
-    @skip
-    @async_test
+    @perf_test
     async def test_pool_concurrency(self):
         results = []
         for sleep, tasks, processes, concurrency in PERF_SETS:

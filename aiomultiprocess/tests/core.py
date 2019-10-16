@@ -2,60 +2,22 @@
 # Licensed under the MIT license
 
 import asyncio
-import os
 import sys
 import time
 from unittest import TestCase
 from unittest.mock import patch
 
 import aiomultiprocess as amp
-from aiomultiprocess.core import PoolWorker, ProxyException, context
 
-from .base import async_test
-
-
-def do_nothing():
-    return
-
-
-async def two():
-    return 2
-
-
-async def sleepy():
-    await asyncio.sleep(0.1)
-    return os.getpid()
-
-
-async def mapper(value):
-    return value * 2
-
-
-async def starmapper(*values):
-    return [value * 2 for value in values]
-
-
-DUMMY_CONSTANT = None
-
-
-def initializer(value):
-    global DUMMY_CONSTANT
-
-    DUMMY_CONSTANT = value
-    _loop = asyncio.get_event_loop()
-
-
-async def get_dummy_constant():
-    return DUMMY_CONSTANT
-
-
-async def raise_fn():
-    raise RuntimeError("raising")
-
-
-async def terminate(process):
-    await asyncio.sleep(0.5)
-    process.terminate()
+from .base import (
+    async_test,
+    do_nothing,
+    get_dummy_constant,
+    initializer,
+    raise_fn,
+    sleepy,
+    two,
+)
 
 
 class CoreTest(TestCase):  # pylint: disable=too-many-public-methods
@@ -180,59 +142,8 @@ class CoreTest(TestCase):  # pylint: disable=too-many-public-methods
         self.assertEqual(await p, p.pid)
 
     @async_test
-    async def test_pool_worker(self):
-        tx = context.Queue()
-        rx = context.Queue()
-        worker = PoolWorker(tx, rx, 1)
-        worker.start()
-
-        self.assertTrue(worker.is_alive())
-        tx.put_nowait((1, mapper, (5,), {}))
-        await asyncio.sleep(0.5)
-        result = rx.get_nowait()
-
-        self.assertEqual(result, (1, 10, None))
-        self.assertFalse(worker.is_alive())  # maxtasks == 1
-
-    @async_test
-    async def test_pool_worker_stop(self):
-        tx = context.Queue()
-        rx = context.Queue()
-        worker = PoolWorker(tx, rx, 2)
-        worker.start()
-
-        self.assertTrue(worker.is_alive())
-        tx.put_nowait((1, mapper, (5,), {}))
-        await asyncio.sleep(0.5)
-        result = rx.get_nowait()
-
-        self.assertEqual(result, (1, 10, None))
-        self.assertTrue(worker.is_alive())  # maxtasks == 2
-
-        tx.put(None)
-        await worker.join(timeout=0.5)
-        self.assertFalse(worker.is_alive())
-
-    @async_test
-    async def test_pool(self):
-        values = list(range(10))
-        results = [await mapper(i) for i in values]
-
-        async with amp.Pool(2) as pool:
-            await asyncio.sleep(0.5)
-            self.assertEqual(pool.process_count, 2)
-            self.assertEqual(len(pool.processes), 2)
-
-            self.assertEqual(await pool.apply(mapper, (values[0],)), results[0])
-            self.assertEqual(await pool.map(mapper, values), results)
-            self.assertEqual(
-                await pool.starmap(starmapper, [values[:4], values[4:]]),
-                [results[:4], results[4:]],
-            )
-
-    @async_test
     async def test_spawn_method(self):
-        self.assertEqual(amp.core.context.get_start_method(), "spawn")
+        self.assertEqual(amp.core.get_context().get_start_method(), "spawn")
 
         async def inline(x):
             return x
@@ -243,41 +154,6 @@ class CoreTest(TestCase):  # pylint: disable=too-many-public-methods
         result = await amp.Worker(target=two, name="test_global")
         self.assertEqual(result, 2)
 
-        values = list(range(10))
-        results = [await mapper(i) for i in values]
-        async with amp.Pool(2) as pool:
-            self.assertEqual(await pool.map(mapper, values), results)
-
-    @async_test
-    async def test_sharded_pool(self):
-        values = list(range(10))
-        results = [await mapper(i) for i in values]
-
-        async with amp.ShardedPool(2) as pool:
-            await asyncio.sleep(0.5)
-            self.assertEqual(pool.process_count, 2)
-            self.assertEqual(len(pool.processes), 2)
-
-            self.assertEqual(await pool.apply(mapper, (values[0],)), results[0])
-            self.assertEqual(await pool.map(mapper, values), results)
-            self.assertEqual(
-                await pool.starmap(starmapper, [values[:4], values[4:]]),
-                [results[:4], results[4:]],
-            )
-
-    def test_sharded_pool_process_ttl(self):
-        async def _test_sharded_pool_process_ttl():
-            values = list(range(100))
-            results = [await mapper(i) for i in values]
-
-            async with amp.ShardedPool(
-                2, maxtasksperchild=10, scheduler=amp.RandomScheduler()
-            ) as pool:
-                self.assertEqual(await pool.map(mapper, values), results)
-
-        loop = asyncio.get_event_loop()
-        loop.run_until_complete(_test_sharded_pool_process_ttl())
-
     @async_test
     async def test_set_start_method(self):
         with self.assertRaises(ValueError):
@@ -285,7 +161,7 @@ class CoreTest(TestCase):  # pylint: disable=too-many-public-methods
 
         if sys.platform.startswith("win32"):
             amp.set_start_method(None)
-            self.assertEqual(amp.core.context.get_start_method(), "spawn")
+            self.assertEqual(amp.core.get_context().get_start_method(), "spawn")
 
             with self.assertRaises(ValueError):
                 amp.set_start_method("fork")
@@ -314,13 +190,13 @@ class CoreTest(TestCase):  # pylint: disable=too-many-public-methods
 
     @async_test
     async def test_initializer(self):
-        p = amp.Process(target=sleepy, name="test_process", initializer=do_nothing)
-        p.start()
-        await p.join()
-
-        result = 10
-        async with amp.Pool(2, initializer=initializer, initargs=(result,)) as pool:
-            self.assertEqual(await pool.apply(get_dummy_constant, args=()), result)
+        result = await amp.Worker(
+            target=get_dummy_constant,
+            name="test_process",
+            initializer=initializer,
+            initargs=(10,),
+        )
+        self.assertEqual(result, 10)
 
     @async_test
     async def test_async_initializer(self):
@@ -334,15 +210,6 @@ class CoreTest(TestCase):  # pylint: disable=too-many-public-methods
             target=raise_fn, name="test_process", initializer=do_nothing
         )
         self.assertIsInstance(result, RuntimeError)
-
-        async with amp.Pool(2) as pool:
-            with self.assertRaises(ProxyException):
-                await pool.apply(raise_fn, args=())
-
-    @async_test
-    async def test_none(self):
-        async with amp.Pool(2) as pool:
-            self.assertIsNone(await pool.apply(asyncio.sleep, args=(0,)))
 
     @async_test
     async def test_sync_target(self):

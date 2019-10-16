@@ -31,5 +31,8 @@ test:
 	python -m coverage combine
 	python -m coverage report
 
+perf:
+	export PERF_TESTS=1 && make test
+
 clean:
 	rm -rf build dist README MANIFEST aiomultiprocess.egg-info
