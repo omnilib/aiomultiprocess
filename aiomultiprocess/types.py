@@ -41,9 +41,5 @@ class Unit(NamedTuple):
     runner: Optional[Callable] = None
 
 
-class ProcessStartError(Exception):
-    pass
-
-
 class ProxyException(Exception):
     pass

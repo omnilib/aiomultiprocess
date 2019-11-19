@@ -10,17 +10,7 @@ from typing import Any, Awaitable, Callable, Dict, Optional, Sequence, Tuple
 
 from .core import Process, get_context
 from .scheduler import RoundRobin, Scheduler
-from .types import (
-    PoolTask,
-    ProcessStartError,
-    ProxyException,
-    Queue,
-    QueueID,
-    R,
-    T,
-    TaskID,
-    TracebackStr,
-)
+from .types import PoolTask, ProxyException, Queue, QueueID, R, T, TaskID, TracebackStr
 
 MAX_TASKS_PER_CHILD = 0  # number of tasks to execute before recycling a child process
 CHILD_CONCURRENCY = 16  # number of tasks to execute simultaneously per child process
@@ -190,8 +180,6 @@ class Pool:
             initargs=self.initargs,
         )
         process.start()
-        if process.pid is None:
-            raise ProcessStartError()
         return process
 
     def queue_work(

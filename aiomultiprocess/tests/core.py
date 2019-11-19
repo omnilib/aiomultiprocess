@@ -38,6 +38,19 @@ class CoreTest(TestCase):  # pylint: disable=too-many-public-methods
         self.assertFalse(p.is_alive())
 
     @async_test
+    async def test_process_await(self):
+        p = amp.Process(target=sleepy, name="test_process")
+        await p
+
+        self.assertIsNotNone(p.exitcode)
+
+        p = amp.Process(target=sleepy, name="test_process")
+        p.start()
+        await p
+
+        self.assertIsNotNone(p.exitcode)
+
+    @async_test
     async def test_process_join(self):
         p = amp.Process(target=sleepy, name="test_process")
 
