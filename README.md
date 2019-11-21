@@ -6,6 +6,7 @@ Take a modern Python codebase to the next level of performance.
 [![build status](https://github.com/jreese/aiomultiprocess/workflows/Build/badge.svg)](https://github.com/jreese/aiomultiprocess/actions)
 [![code coverage](https://img.shields.io/codecov/c/gh/jreese/aiomultiprocess)](https://codecov.io/gh/jreese/aiomultiprocess)
 [![version](https://img.shields.io/pypi/v/aiomultiprocess.svg)](https://pypi.org/project/aiomultiprocess)
+[![changelog](https://img.shields.io/badge/change-log-blue)](https://github.com/jreese/aiomultiprocess/blob/master/CHANGELOG.md)
 [![license](https://img.shields.io/pypi/l/aiomultiprocess.svg)](https://github.com/jreese/aiomultiprocess/blob/master/LICENSE)
 [![code style](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/ambv/black)
 
