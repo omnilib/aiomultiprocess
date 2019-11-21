@@ -36,3 +36,6 @@ perf:
 
 clean:
 	rm -rf build dist README MANIFEST aiomultiprocess.egg-info
+
+CHANGELOG.md:
+	attribution > CHANGELOG.md
