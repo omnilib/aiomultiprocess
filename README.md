@@ -66,7 +66,8 @@ async def main():
     p = Process(target=put, args=("https://jreese.sh", {}))
     await p
 
-asyncio.run(main())
+if __name__ == "__main__":
+    asyncio.run(main())
 ```
 
 If you want to get results back from that coroutine, `Worker` makes that available:
@@ -84,7 +85,8 @@ async def main():
     p = Worker(target=get, args=("https://jreese.sh", ))
     response = await p
 
-asyncio.run(main())
+if __name__ == "__main__":
+    asyncio.run(main())
 ```
 
 If you want a managed pool of worker processes, then use `Pool`:
@@ -103,7 +105,8 @@ async def main():
     async with Pool() as pool:
         result = await pool.map(get, urls)
 
-asyncio.run(main())
+if __name__ == "__main__":
+    asyncio.run(main())
 ```
 
 
