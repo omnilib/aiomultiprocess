@@ -50,11 +50,11 @@ class Scheduler(ABC):
 
 class RoundRobin(Scheduler):
     """
-    The default scheduling algorithm that assigns tasks to queues randomly.
+    The default scheduling algorithm that assigns tasks to queues in round robin order.
 
     When multiple processes are assigned to the same queue, this will weight tasks
-    accordingly.  For example, 12 processes over 8 queues should result in four queues
-    receiving double the number tasks of
+    accordingly. For example, 12 processes over 8 queues should result in four queues
+    receiving double the number tasks compared to the other eight.
     """
 
     def __init__(self) -> None:

@@ -7,10 +7,12 @@ dev:
 setup:
 	python -m pip install -Ur requirements-dev.txt
 
-venv:
+.venv:
 	python -m venv .venv
 	source .venv/bin/activate && make setup dev
 	echo 'run `source .venv/bin/activate` to use virtualenv'
+
+venv: .venv
 
 release: lint test clean
 	python setup.py sdist
@@ -34,8 +36,14 @@ test:
 perf:
 	export PERF_TESTS=1 && make test
 
+html: .venv README.md docs/* docs/*/*
+	source .venv/bin/activate && sphinx-build -b html docs html
+
 clean:
-	rm -rf build dist README MANIFEST aiomultiprocess.egg-info
+	rm -rf build dist html README MANIFEST aiomultiprocess.egg-info
+
+distclean:
+	rm -rf .venv
 
 .PHONY: CHANGELOG.md
 CHANGELOG.md:

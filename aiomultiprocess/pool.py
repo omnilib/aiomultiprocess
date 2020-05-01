@@ -131,7 +131,11 @@ class Pool:
         await self.join()
 
     def init(self) -> None:
-        """Create the initial mapping of processes and queues."""
+        """
+        Create the initial mapping of processes and queues.
+
+        :meta private:
+        """
         for _ in range(self.queue_count):
             tx = self.context.Queue()
             rx = self.context.Queue()
@@ -146,7 +150,11 @@ class Pool:
             self.scheduler.register_process(qid)
 
     async def loop(self) -> None:
-        """Maintain the pool of workers while open."""
+        """
+        Maintain the pool of workers while open.
+
+        :meta private:
+        """
         while self.processes or self.running:
             # clean up workers that reached TTL
             for process in list(self.processes):
@@ -169,7 +177,11 @@ class Pool:
             await asyncio.sleep(0.005)
 
     def create_worker(self, qid: QueueID) -> Process:
-        """Create a worker process attached to the given transmit and receive queues."""
+        """
+        Create a worker process attached to the given transmit and receive queues.
+
+        :meta private:
+        """
         tx, rx = self.queues[qid]
         process = PoolWorker(
             tx,
@@ -188,7 +200,11 @@ class Pool:
         args: Sequence[Any],
         kwargs: Dict[str, Any],
     ) -> TaskID:
-        """Add a new work item to the outgoing queue."""
+        """
+        Add a new work item to the outgoing queue.
+
+        :meta private:
+        """
         self.last_id += 1
         task_id = TaskID(self.last_id)
 
@@ -200,11 +216,20 @@ class Pool:
     def finish_work(
         self, task_id: TaskID, value: Any, tb: Optional[TracebackStr]
     ) -> None:
+        """
+        Mark work items as completed.
+
+        :meta private:
+        """
         self._results[task_id] = value, tb
         self.scheduler.complete_task(task_id)
 
     async def results(self, tids: Sequence[TaskID]) -> Sequence[R]:
-        """Wait for all tasks to complete, and return results, preserving order."""
+        """
+        Wait for all tasks to complete, and return results, preserving order.
+
+        :meta private:
+        """
         pending = set(tids)
         ready: Dict[TaskID, R] = {}
 
