@@ -23,7 +23,7 @@ Gathering tens of thousands of network requests in seconds is as easy as:
 
 ```python
 async with Pool() as pool:
-    results = await pool.map(<coroutine>, <items>)
+    results = await pool.map(<coroutine function>, <items>)
 ```
 
 For more context, watch the PyCon US 2018 talk about aiomultiprocess,
