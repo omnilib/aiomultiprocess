@@ -1,8 +1,8 @@
 name: Build
-on: 
+on:
   push:
     branches:
-      - master
+      - main
     tags:
       - v*
   pull_request:
