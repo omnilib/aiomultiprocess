@@ -30,8 +30,9 @@ class PoolWorker(Process):
         *,
         initializer: Optional[Callable] = None,
         initargs: Sequence[Any] = (),
+        use_uvloop: bool = False
     ) -> None:
-        super().__init__(target=self.run, initializer=initializer, initargs=initargs)
+        super().__init__(target=self.run, initializer=initializer, initargs=initargs, use_uvloop=use_uvloop)
         self.concurrency = max(1, concurrency)
         self.ttl = max(0, ttl)
         self.tx = tx
@@ -96,7 +97,9 @@ class Pool:
         childconcurrency: int = CHILD_CONCURRENCY,
         queuecount: Optional[int] = None,
         scheduler: Scheduler = None,
+        use_uvloop: bool = False
     ) -> None:
+        self.use_uvloop: bool = use_uvloop
         self.context = get_context()
 
         self.scheduler = scheduler or RoundRobin()
@@ -117,9 +120,10 @@ class Pool:
         self.running = True
         self.last_id = 0
         self._results: Dict[TaskID, Tuple[Any, Optional[TracebackStr]]] = {}
-
+    
         self.init()
         self._loop = asyncio.ensure_future(self.loop())
+        
 
     async def __aenter__(self) -> "Pool":
         """Enable `async with Pool() as pool` usage."""
@@ -190,6 +194,7 @@ class Pool:
             self.childconcurrency,
             initializer=self.initializer,
             initargs=self.initargs,
+            use_uvloop=self.use_uvloop,
         )
         process.start()
         return process
