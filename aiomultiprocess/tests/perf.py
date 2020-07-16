@@ -59,7 +59,7 @@ class PerfTest(TestCase):
         results = []
         for sleep, tasks, processes, concurrency in PERF_SETS:
             with Timer() as timer:
-                async with amp.Pool(processes, childconcurrency=concurrency, use_uvloop=useuvloop) as pool:
+                async with amp.Pool(processes, childconcurrency=concurrency, use_uvloop=use_uvloop) as pool:
                     await pool.map(sleepy, (sleep for _ in range(tasks)))
 
             results.append((sleep, tasks, processes, concurrency, timer.result))
