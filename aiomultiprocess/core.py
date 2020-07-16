@@ -89,13 +89,14 @@ class Process:
         initializer: Optional[Callable] = None,
         initargs: Sequence[Any] = (),
         process_target: Optional[Callable] = None,
+        use_uvloop: bool = False
     ) -> None:
         if target is not None and not asyncio.iscoroutinefunction(target):
             raise ValueError(f"target must be coroutine function")
 
         if initializer is not None and asyncio.iscoroutinefunction(initializer):
             raise ValueError(f"initializer must be synchronous function")
-
+        self.use_uvloop = use_uvloop
         self.unit = Unit(
             target=target or not_implemented,
             args=args or (),
@@ -124,6 +125,9 @@ class Process:
         """Initialize the child process and event loop, then execute the coroutine."""
         try:
             loop = asyncio.new_event_loop()
+            if self.use_uvloop:
+                import uvloop
+                loop = uvloop.new_event_loop()
             asyncio.set_event_loop(loop)
 
             if unit.initializer:
