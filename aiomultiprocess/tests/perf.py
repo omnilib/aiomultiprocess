@@ -1,9 +1,10 @@
 # Copyright 2018 John Reese
 # Licensed under the MIT license
 
+from unittest import TestCase
 import asyncio
 import time
-from unittest import TestCase
+import os
 
 import aiomultiprocess as amp
 
@@ -54,10 +55,11 @@ async def sleepy(durations):
 class PerfTest(TestCase):
     @perf_test
     async def test_pool_concurrency(self):
+        use_uvloop = True if "TEST_WITH_UVLOOP" in os.environ else False
         results = []
         for sleep, tasks, processes, concurrency in PERF_SETS:
             with Timer() as timer:
-                async with amp.Pool(processes, childconcurrency=concurrency) as pool:
+                async with amp.Pool(processes, childconcurrency=concurrency, use_uvloop=useuvloop) as pool:
                     await pool.map(sleepy, (sleep for _ in range(tasks)))
 
             results.append((sleep, tasks, processes, concurrency, timer.result))
