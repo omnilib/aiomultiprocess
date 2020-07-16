@@ -1,8 +1,9 @@
 # Copyright 2018 John Reese
 # Licensed under the MIT license
 
-import asyncio
 from unittest import TestCase
+import asyncio
+import os
 
 import aiomultiprocess as amp
 from aiomultiprocess.core import get_context
@@ -12,11 +13,16 @@ from .base import async_test, mapper, raise_fn, starmapper, two
 
 
 class PoolTest(TestCase):  # pylint: disable=too-many-public-methods
+    def setUp(self):
+        self.use_uvloop = True if "TEST_WITH_UVLOOP" in os.environ else False
+        # reset to default context before each test
+        # amp.set_start_method()
+        
     @async_test
     async def test_pool_worker_max_tasks(self):
         tx = get_context().Queue()
         rx = get_context().Queue()
-        worker = PoolWorker(tx, rx, 1)
+        worker = PoolWorker(tx, rx, 1, use_uvloop=self.use_uvloop)
         worker.start()
 
         self.assertTrue(worker.is_alive())
@@ -31,7 +37,7 @@ class PoolTest(TestCase):  # pylint: disable=too-many-public-methods
     async def test_pool_worker_stop(self):
         tx = get_context().Queue()
         rx = get_context().Queue()
-        worker = PoolWorker(tx, rx, 2)
+        worker = PoolWorker(tx, rx, 2, use_uvloop=self.use_uvloop)
         worker.start()
 
         self.assertTrue(worker.is_alive())
@@ -50,7 +56,7 @@ class PoolTest(TestCase):  # pylint: disable=too-many-public-methods
     async def test_pool_worker_exceptions(self):
         tx = get_context().Queue()
         rx = get_context().Queue()
-        worker = PoolWorker(tx, rx)
+        worker = PoolWorker(tx, rx, use_uvloop=self.use_uvloop)
         worker.start()
 
         self.assertTrue(worker.is_alive())
@@ -72,7 +78,7 @@ class PoolTest(TestCase):  # pylint: disable=too-many-public-methods
         values = list(range(10))
         results = [await mapper(i) for i in values]
 
-        async with amp.Pool(2, maxtasksperchild=5) as pool:
+        async with amp.Pool(2, maxtasksperchild=5, use_uvloop=self.use_uvloop) as pool:
             self.assertEqual(pool.process_count, 2)
             self.assertEqual(len(pool.processes), 2)
 
@@ -85,17 +91,17 @@ class PoolTest(TestCase):  # pylint: disable=too-many-public-methods
 
     @async_test
     async def test_pool_exception(self):
-        async with amp.Pool(2) as pool:
+        async with amp.Pool(2, use_uvloop=self.use_uvloop) as pool:
             with self.assertRaises(ProxyException):
                 await pool.apply(raise_fn, args=())
 
     def test_pool_args(self):
         with self.assertRaisesRegex(ValueError, "queue count must be <= process"):
-            amp.Pool(4, queuecount=9)
+            amp.Pool(4, queuecount=9, use_uvloop=self.use_uvloop)
 
     @async_test
     async def test_pool_closed(self):
-        pool = amp.Pool(2)
+        pool = amp.Pool(2, use_uvloop=self.use_uvloop)
         pool.close()
 
         with self.assertRaisesRegex(RuntimeError, "pool is closed"):
@@ -111,6 +117,6 @@ class PoolTest(TestCase):  # pylint: disable=too-many-public-methods
 
     @async_test
     async def test_pool_early_join(self):
-        async with amp.Pool(2) as pool:
+        async with amp.Pool(2, use_uvloop=self.use_uvloop) as pool:
             with self.assertRaisesRegex(RuntimeError, "pool is still open"):
                 await pool.join()
