@@ -1,11 +1,12 @@
 # Copyright 2018 John Reese
 # Licensed under the MIT license
 
-import asyncio
-import sys
-import time
-from unittest import TestCase
 from unittest.mock import patch
+from unittest import TestCase
+import asyncio
+import time
+import sys
+import os
 
 import aiomultiprocess as amp
 
@@ -24,6 +25,8 @@ class CoreTest(TestCase):  # pylint: disable=too-many-public-methods
     def setUp(self):
         # reset to default context before each test
         amp.set_start_method()
+        if "TEST_WITH_UVLOOP" in os.environ:
+            self.use_uvloop = True
 
     @async_test
     async def test_process(self):
