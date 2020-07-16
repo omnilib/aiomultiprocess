@@ -120,8 +120,7 @@ class Process:
 
         return self.join().__await__()
 
-    @staticmethod
-    def run_async(unit: Unit) -> R:
+    def run_async(self, unit: Unit) -> R:
         """Initialize the child process and event loop, then execute the coroutine."""
         try:
             loop = asyncio.new_event_loop()
