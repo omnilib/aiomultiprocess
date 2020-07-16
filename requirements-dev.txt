@@ -9,3 +9,4 @@ python-coveralls==2.9.2
 sphinx==3.0.3
 twine==1.13.0
 git+https://github.com/miyakogi/m2r
+uvloop==0.14.0
