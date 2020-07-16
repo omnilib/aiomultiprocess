@@ -30,7 +30,7 @@ class CoreTest(TestCase):  # pylint: disable=too-many-public-methods
 
     @async_test
     async def test_process(self):
-        p = amp.Process(target=sleepy, name="test_process")
+        p = amp.Process(target=sleepy, name="test_process", use_uvloop=self.use_uvloop)
         p.start()
 
         self.assertEqual(p.name, "test_process")
@@ -42,12 +42,12 @@ class CoreTest(TestCase):  # pylint: disable=too-many-public-methods
 
     @async_test
     async def test_process_await(self):
-        p = amp.Process(target=sleepy, name="test_process")
+        p = amp.Process(target=sleepy, name="test_process", use_uvloop=self.use_uvloop)
         await p
 
         self.assertIsNotNone(p.exitcode)
 
-        p = amp.Process(target=sleepy, name="test_process")
+        p = amp.Process(target=sleepy, name="test_process", use_uvloop=self.use_uvloop)
         p.start()
         await p
 
@@ -55,7 +55,7 @@ class CoreTest(TestCase):  # pylint: disable=too-many-public-methods
 
     @async_test
     async def test_process_join(self):
-        p = amp.Process(target=sleepy, name="test_process")
+        p = amp.Process(target=sleepy, name="test_process", use_uvloop=self.use_uvloop)
 
         with self.assertRaisesRegex(ValueError, "must start process"):
             await p.join()
@@ -66,7 +66,7 @@ class CoreTest(TestCase):  # pylint: disable=too-many-public-methods
 
     @async_test
     async def test_process_daemon(self):
-        p = amp.Process(daemon=False)
+        p = amp.Process(daemon=False, use_uvloop=self.use_uvloop)
         self.assertEqual(p.daemon, False)
         p.daemon = True
         self.assertEqual(p.daemon, True)
@@ -79,7 +79,7 @@ class CoreTest(TestCase):  # pylint: disable=too-many-public-methods
     @async_test
     async def test_process_terminate(self):
         start = time.time()
-        p = amp.Process(target=asyncio.sleep, args=(1,), name="test_process")
+        p = amp.Process(target=asyncio.sleep, args=(1,), name="test_process", use_uvloop=self.use_uvloop)
         p.start()
 
         p.terminate()
@@ -89,7 +89,7 @@ class CoreTest(TestCase):  # pylint: disable=too-many-public-methods
 
     @async_test
     async def test_process_kill(self):
-        p = amp.Process(target=sleepy)
+        p = amp.Process(target=sleepy, use_uvloop=self.use_uvloop)
         p.start()
 
         if sys.version_info >= (3, 7):
@@ -104,7 +104,7 @@ class CoreTest(TestCase):  # pylint: disable=too-many-public-methods
 
     @async_test
     async def test_process_close(self):
-        p = amp.Process(target=sleepy)
+        p = amp.Process(target=sleepy, use_uvloop=self.use_uvloop)
         p.start()
 
         if sys.version_info >= (3, 7):
@@ -127,7 +127,7 @@ class CoreTest(TestCase):  # pylint: disable=too-many-public-methods
 
     @async_test
     async def test_process_timeout(self):
-        p = amp.Process(target=sleepy)
+        p = amp.Process(target=sleepy, use_uvloop=self.use_uvloop)
         p.start()
 
         with self.assertRaises(asyncio.TimeoutError):
@@ -135,7 +135,7 @@ class CoreTest(TestCase):  # pylint: disable=too-many-public-methods
 
     @async_test
     async def test_worker(self):
-        p = amp.Worker(target=sleepy)
+        p = amp.Worker(target=sleepy, use_uvloop=self.use_uvloop)
         p.start()
 
         with self.assertRaisesRegex(ValueError, "coroutine not completed"):
@@ -149,12 +149,12 @@ class CoreTest(TestCase):  # pylint: disable=too-many-public-methods
     @async_test
     async def test_worker_join(self):
         # test results from join
-        p = amp.Worker(target=sleepy)
+        p = amp.Worker(target=sleepy, use_uvloop=self.use_uvloop)
         p.start()
         self.assertEqual(await p.join(), p.pid)
 
         # test awaiting p directly, no need to start
-        p = amp.Worker(target=sleepy)
+        p = amp.Worker(target=sleepy, use_uvloop=self.use_uvloop)
         self.assertEqual(await p, p.pid)
 
     @async_test
@@ -165,7 +165,7 @@ class CoreTest(TestCase):  # pylint: disable=too-many-public-methods
             return x
 
         with self.assertRaises(AttributeError):
-            await amp.Worker(target=inline, args=(1,), name="test_inline")
+            await amp.Worker(target=inline, args=(1,), name="test_inline", use_uvloop=self.use_uvloop)
 
         result = await amp.Worker(target=two, name="test_global")
         self.assertEqual(result, 2)
@@ -188,7 +188,7 @@ class CoreTest(TestCase):  # pylint: disable=too-many-public-methods
             async def inline(x):
                 return x
 
-            result = await amp.Worker(target=inline, args=(17,), name="test_inline")
+            result = await amp.Worker(target=inline, args=(17,), name="test_inline", use_uvloop=self.use_uvloop)
             self.assertEqual(result, 17)
 
     @patch("aiomultiprocess.core.set_start_method")
@@ -211,6 +211,7 @@ class CoreTest(TestCase):  # pylint: disable=too-many-public-methods
             name="test_process",
             initializer=initializer,
             initargs=(10,),
+            use_uvloop=self.use_uvloop
         )
         self.assertEqual(result, 10)
 
@@ -223,7 +224,7 @@ class CoreTest(TestCase):  # pylint: disable=too-many-public-methods
     @async_test
     async def test_raise(self):
         result = await amp.Worker(
-            target=raise_fn, name="test_process", initializer=do_nothing
+            target=raise_fn, name="test_process", initializer=do_nothing, use_uvloop=self.use_uvloop
         )
         self.assertIsInstance(result, RuntimeError)
 
@@ -231,7 +232,7 @@ class CoreTest(TestCase):  # pylint: disable=too-many-public-methods
     async def test_sync_target(self):
         with self.assertRaises(ValueError) as _:
             p = amp.Process(
-                target=do_nothing, name="test_process", initializer=do_nothing
+                target=do_nothing, name="test_process", initializer=do_nothing, use_uvloop=self.use_uvloop
             )
             p.start()
 
