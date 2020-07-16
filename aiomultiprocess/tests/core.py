@@ -25,8 +25,7 @@ class CoreTest(TestCase):  # pylint: disable=too-many-public-methods
     def setUp(self):
         # reset to default context before each test
         amp.set_start_method()
-        if "TEST_WITH_UVLOOP" in os.environ:
-            self.use_uvloop = True
+        self.use_uvloop = True if "TEST_WITH_UVLOOP" in os.environ else False
 
     @async_test
     async def test_process(self):
