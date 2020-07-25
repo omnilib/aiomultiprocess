@@ -84,6 +84,43 @@ class PoolTest(TestCase):  # pylint: disable=too-many-public-methods
             )
 
     @async_test
+    async def test_pool_map(self):
+        values = list(range(0, 20, 2))
+        expected = [k * 2 for k in values]
+
+        async with amp.Pool(2) as pool:
+            obj = pool.map(mapper, values)
+            self.assertIsInstance(obj, amp.pool.PoolResult)
+            results = await obj
+            self.assertEqual(results, expected)
+
+            obj = pool.map(mapper, values)
+            self.assertIsInstance(obj, amp.pool.PoolResult)
+            idx = 0
+            async for result in obj:
+                self.assertEqual(result, expected[idx])
+                idx += 1
+
+    @async_test
+    async def test_pool_starmap(self):
+        values = list(range(0, 20, 2))
+        expected = [k * 2 for k in values]
+
+        async with amp.Pool(2) as pool:
+            obj = pool.starmap(starmapper, [values] * 5)
+            self.assertIsInstance(obj, amp.pool.PoolResult)
+            results = await obj
+            self.assertEqual(results, [expected] * 5)
+
+            obj = pool.starmap(starmapper, [values] * 5)
+            self.assertIsInstance(obj, amp.pool.PoolResult)
+            count = 0
+            async for results in obj:
+                self.assertEqual(results, expected)
+                count += 1
+            self.assertEqual(count, 5)
+
+    @async_test
     async def test_pool_exception(self):
         async with amp.Pool(2) as pool:
             with self.assertRaises(ProxyException):
@@ -114,3 +151,4 @@ class PoolTest(TestCase):  # pylint: disable=too-many-public-methods
         async with amp.Pool(2) as pool:
             with self.assertRaisesRegex(RuntimeError, "pool is still open"):
                 await pool.join()
+

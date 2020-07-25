@@ -6,7 +6,7 @@ import logging
 import os
 import queue
 import traceback
-from typing import Any, Awaitable, Callable, Dict, Optional, Sequence, Tuple
+from typing import Any, Awaitable, Callable, Dict, Optional, Sequence, Tuple, Generic
 
 from .core import Process, get_context
 from .scheduler import RoundRobin, Scheduler
@@ -82,6 +82,29 @@ class PoolWorker(Process):
 
                 self.rx.put_nowait((tid, result, tb))
                 completed += 1
+
+
+class PoolResult(Generic[R]):
+    """
+    Asynchronous proxy for map/starmap results. Can be awaited or used with `async for`.
+    """
+
+    def __init__(self, pool: "Pool", task_ids: Sequence[TaskID]):
+        self.pool = pool
+        self.task_ids = task_ids
+
+    def __await__(self):
+        return self.results().__await__()
+
+    async def results(self):
+        return await self.pool.results(self.task_ids)
+
+    def __aiter__(self):
+        return self.results_generator()
+
+    async def results_generator(self):
+        for task_id in self.task_ids:
+            yield (await self.pool.results([task_id]))[0]
 
 
 class Pool:
@@ -263,7 +286,7 @@ class Pool:
         results: Sequence[R] = await self.results([tid])
         return results[0]
 
-    async def map(
+    def map(
         self,
         func: Callable[[T], Awaitable[R]],
         iterable: Sequence[T],
@@ -274,9 +297,9 @@ class Pool:
             raise RuntimeError(f"pool is closed")
 
         tids = [self.queue_work(func, (item,), {}) for item in iterable]
-        return await self.results(tids)
+        return PoolResult(self, tids)
 
-    async def starmap(
+    def starmap(
         self,
         func: Callable[..., Awaitable[R]],
         iterable: Sequence[Sequence[T]],
@@ -287,7 +310,7 @@ class Pool:
             raise RuntimeError(f"pool is closed")
 
         tids = [self.queue_work(func, args, {}) for args in iterable]
-        return await self.results(tids)
+        return PoolResult(self, tids)
 
     def close(self) -> None:
         """Close the pool to new visitors."""
