@@ -11,6 +11,10 @@ Process Pools
     :members:
     :special-members: __aenter__, __aexit__
 
+.. autoclass:: PoolResult
+    :members:
+    :special-members: __aiter__, __await__
+
 .. autoclass:: Scheduler
     :members:
 

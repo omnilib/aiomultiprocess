@@ -6,7 +6,19 @@ import logging
 import os
 import queue
 import traceback
-from typing import Any, Awaitable, Callable, Dict, Optional, Sequence, Tuple, Generic
+from typing import (
+    Any,
+    AsyncIterable,
+    AsyncIterator,
+    Awaitable,
+    Callable,
+    Dict,
+    Generator,
+    Optional,
+    Sequence,
+    Tuple,
+    TypeVar,
+)
 
 from .core import Process, get_context
 from .scheduler import RoundRobin, Scheduler
@@ -14,6 +26,7 @@ from .types import PoolTask, ProxyException, Queue, QueueID, R, T, TaskID, Trace
 
 MAX_TASKS_PER_CHILD = 0  # number of tasks to execute before recycling a child process
 CHILD_CONCURRENCY = 16  # number of tasks to execute simultaneously per child process
+_T = TypeVar("_T")
 
 log = logging.getLogger(__name__)
 
@@ -84,7 +97,7 @@ class PoolWorker(Process):
                 completed += 1
 
 
-class PoolResult(Generic[R]):
+class PoolResult(Awaitable[Sequence[_T]], AsyncIterable[_T]):
     """
     Asynchronous proxy for map/starmap results. Can be awaited or used with `async for`.
     """
@@ -93,16 +106,20 @@ class PoolResult(Generic[R]):
         self.pool = pool
         self.task_ids = task_ids
 
-    def __await__(self):
+    def __await__(self) -> Generator[Any, None, Sequence[_T]]:
+        """Wait for all results and return them as a sequence"""
         return self.results().__await__()
 
-    async def results(self):
+    async def results(self) -> Sequence[_T]:
+        """Wait for all results and return them as a sequence"""
         return await self.pool.results(self.task_ids)
 
-    def __aiter__(self):
+    def __aiter__(self) -> AsyncIterator[_T]:
+        """Return results one-by-one as they are ready"""
         return self.results_generator()
 
-    async def results_generator(self):
+    async def results_generator(self) -> AsyncIterator[_T]:
+        """Return results one-by-one as they are ready"""
         for task_id in self.task_ids:
             yield (await self.pool.results([task_id]))[0]
 
@@ -291,7 +308,7 @@ class Pool:
         func: Callable[[T], Awaitable[R]],
         iterable: Sequence[T],
         # chunksize: int = None,  # todo: implement chunking maybe
-    ) -> Sequence[R]:
+    ) -> PoolResult[R]:
         """Run a coroutine once for each item in the iterable."""
         if not self.running:
             raise RuntimeError(f"pool is closed")
@@ -304,7 +321,7 @@ class Pool:
         func: Callable[..., Awaitable[R]],
         iterable: Sequence[Sequence[T]],
         # chunksize: int = None,  # todo: implement chunking maybe
-    ) -> Sequence[R]:
+    ) -> PoolResult[R]:
         """Run a coroutine once for each sequence of items in the iterable."""
         if not self.running:
             raise RuntimeError(f"pool is closed")

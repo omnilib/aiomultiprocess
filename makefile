@@ -36,7 +36,7 @@ test:
 perf:
 	export PERF_TESTS=1 && make test
 
-html: .venv README.md docs/* docs/*/*
+html: .venv README.md docs/* docs/*/* aiomultiprocess/*
 	source .venv/bin/activate && sphinx-build -b html docs html
 
 clean:

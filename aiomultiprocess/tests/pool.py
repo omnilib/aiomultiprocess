@@ -90,12 +90,12 @@ class PoolTest(TestCase):  # pylint: disable=too-many-public-methods
 
         async with amp.Pool(2) as pool:
             obj = pool.map(mapper, values)
-            self.assertIsInstance(obj, amp.pool.PoolResult)
+            self.assertIsInstance(obj, amp.PoolResult)
             results = await obj
             self.assertEqual(results, expected)
 
             obj = pool.map(mapper, values)
-            self.assertIsInstance(obj, amp.pool.PoolResult)
+            self.assertIsInstance(obj, amp.PoolResult)
             idx = 0
             async for result in obj:
                 self.assertEqual(result, expected[idx])
@@ -108,12 +108,12 @@ class PoolTest(TestCase):  # pylint: disable=too-many-public-methods
 
         async with amp.Pool(2) as pool:
             obj = pool.starmap(starmapper, [values] * 5)
-            self.assertIsInstance(obj, amp.pool.PoolResult)
+            self.assertIsInstance(obj, amp.PoolResult)
             results = await obj
             self.assertEqual(results, [expected] * 5)
 
             obj = pool.starmap(starmapper, [values] * 5)
-            self.assertIsInstance(obj, amp.pool.PoolResult)
+            self.assertIsInstance(obj, amp.PoolResult)
             count = 0
             async for results in obj:
                 self.assertEqual(results, expected)
@@ -151,4 +151,3 @@ class PoolTest(TestCase):  # pylint: disable=too-many-public-methods
         async with amp.Pool(2) as pool:
             with self.assertRaisesRegex(RuntimeError, "pool is still open"):
                 await pool.join()
-
