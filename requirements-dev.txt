@@ -8,5 +8,5 @@ pylint==2.3.1
 python-coveralls==2.9.2
 sphinx==3.0.3
 twine==1.13.0
-uvloop==0.14.0
+uvloop==0.14.0; sys_platform != "win32"
 git+https://github.com/miyakogi/m2r
