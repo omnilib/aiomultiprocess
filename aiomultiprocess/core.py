@@ -88,6 +88,7 @@ class Process:
         daemon: bool = None,
         initializer: Optional[Callable] = None,
         initargs: Sequence[Any] = (),
+        loop_initializer: Optional[Callable] = None,
         process_target: Optional[Callable] = None,
     ) -> None:
         if target is not None and not asyncio.iscoroutinefunction(target):
@@ -96,6 +97,11 @@ class Process:
         if initializer is not None and asyncio.iscoroutinefunction(initializer):
             raise ValueError(f"initializer must be synchronous function")
 
+        if loop_initializer is not None and asyncio.iscoroutinefunction(
+            loop_initializer
+        ):
+            raise ValueError(f"loop_initializer must be synchronous function")
+
         self.unit = Unit(
             target=target or not_implemented,
             args=args or (),
@@ -103,6 +109,7 @@ class Process:
             namespace=get_manager().Namespace(),
             initializer=initializer,
             initargs=initargs,
+            loop_initializer=loop_initializer,
         )
         self.aio_process = context.Process(
             group=group,
@@ -123,7 +130,11 @@ class Process:
     def run_async(unit: Unit) -> R:
         """Initialize the child process and event loop, then execute the coroutine."""
         try:
-            loop = asyncio.new_event_loop()
+            if unit.loop_initializer is None:
+                loop = asyncio.new_event_loop()
+            else:
+                loop = unit.loop_initializer()
+
             asyncio.set_event_loop(loop)
 
             if unit.initializer:

@@ -22,7 +22,17 @@ from typing import (
 
 from .core import Process, get_context
 from .scheduler import RoundRobin, Scheduler
-from .types import PoolTask, ProxyException, Queue, QueueID, R, T, TaskID, TracebackStr
+from .types import (
+    LoopInitializer,
+    PoolTask,
+    ProxyException,
+    Queue,
+    QueueID,
+    R,
+    T,
+    TaskID,
+    TracebackStr,
+)
 
 MAX_TASKS_PER_CHILD = 0  # number of tasks to execute before recycling a child process
 CHILD_CONCURRENCY = 16  # number of tasks to execute simultaneously per child process
@@ -43,8 +53,14 @@ class PoolWorker(Process):
         *,
         initializer: Optional[Callable] = None,
         initargs: Sequence[Any] = (),
+        loop_initializer: Optional[LoopInitializer] = None,
     ) -> None:
-        super().__init__(target=self.run, initializer=initializer, initargs=initargs)
+        super().__init__(
+            target=self.run,
+            initializer=initializer,
+            initargs=initargs,
+            loop_initializer=loop_initializer,
+        )
         self.concurrency = max(1, concurrency)
         self.ttl = max(0, ttl)
         self.tx = tx
@@ -136,6 +152,7 @@ class Pool:
         childconcurrency: int = CHILD_CONCURRENCY,
         queuecount: Optional[int] = None,
         scheduler: Scheduler = None,
+        loop_initializer: Optional[LoopInitializer] = None,
     ) -> None:
         self.context = get_context()
 
@@ -148,6 +165,7 @@ class Pool:
 
         self.initializer = initializer
         self.initargs = initargs
+        self.loop_initializer = loop_initializer
         self.maxtasksperchild = max(0, maxtasksperchild)
         self.childconcurrency = max(1, childconcurrency)
 
@@ -230,6 +248,7 @@ class Pool:
             self.childconcurrency,
             initializer=self.initializer,
             initargs=self.initargs,
+            loop_initializer=self.loop_initializer,
         )
         process.start()
         return process

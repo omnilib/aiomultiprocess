@@ -11,6 +11,13 @@ from aiomultiprocess.pool import PoolWorker, ProxyException
 from .base import async_test, mapper, raise_fn, starmapper, two
 
 
+async def check_uvloop():
+    import uvloop
+
+    loop = asyncio.get_event_loop()
+    return isinstance(loop, uvloop.Loop)
+
+
 class PoolTest(TestCase):  # pylint: disable=too-many-public-methods
     @async_test
     async def test_pool_worker_max_tasks(self):
@@ -151,3 +158,15 @@ class PoolTest(TestCase):  # pylint: disable=too-many-public-methods
         async with amp.Pool(2) as pool:
             with self.assertRaisesRegex(RuntimeError, "pool is still open"):
                 await pool.join()
+
+    @async_test
+    async def test_pool_uvloop(self):
+        try:
+            import uvloop
+
+            async with amp.Pool(2, loop_initializer=uvloop.new_event_loop) as pool:
+                had_uvloop = await pool.apply(check_uvloop)
+                self.assertTrue(had_uvloop)
+
+        except ModuleNotFoundError:
+            self.skipTest("uvloop not available")

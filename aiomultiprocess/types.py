@@ -2,6 +2,7 @@
 # Licensed under the MIT license
 
 import multiprocessing
+from asyncio import BaseEventLoop
 from typing import (
     Any,
     Callable,
@@ -25,6 +26,7 @@ QueueID = NewType("QueueID", int)
 
 TracebackStr = str
 
+LoopInitializer = Callable[..., BaseEventLoop]
 PoolTask = Optional[Tuple[TaskID, Callable[..., R], Sequence[T], Dict[str, T]]]
 PoolResult = Tuple[TaskID, Optional[R], Optional[TracebackStr]]
 
@@ -38,6 +40,7 @@ class Unit(NamedTuple):
     namespace: Any
     initializer: Optional[Callable] = None
     initargs: Sequence[Any] = ()
+    loop_initializer: Optional[LoopInitializer] = None
     runner: Optional[Callable] = None
 
 
