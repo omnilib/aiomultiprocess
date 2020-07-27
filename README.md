@@ -3,11 +3,12 @@ aiomultiprocess
 
 Take a modern Python codebase to the next level of performance.
 
+[![version](https://img.shields.io/pypi/v/aiomultiprocess.svg)](https://pypi.org/project/aiomultiprocess)
+[![documentation](https://readthedocs.org/projects/aiosqlite/badge/?version=latest)](https://aiomultiprocess.omnilib.dev)
+[![changelog](https://img.shields.io/badge/change-log-blue)](https://aiomultiprocess.omnilib.dev/en/latest/changelog.html)
+[![license](https://img.shields.io/pypi/l/aiomultiprocess.svg)](https://github.com/omnilib/aiomultiprocess/blob/master/LICENSE)
 [![build status](https://github.com/omnilib/aiomultiprocess/workflows/Build/badge.svg)](https://github.com/omnilib/aiomultiprocess/actions)
 [![code coverage](https://img.shields.io/codecov/c/gh/omnilib/aiomultiprocess)](https://codecov.io/gh/omnilib/aiomultiprocess)
-[![version](https://img.shields.io/pypi/v/aiomultiprocess.svg)](https://pypi.org/project/aiomultiprocess)
-[![changelog](https://img.shields.io/badge/change-log-blue)](https://github.com/omnilib/aiomultiprocess/blob/master/CHANGELOG.md)
-[![license](https://img.shields.io/pypi/l/aiomultiprocess.svg)](https://github.com/omnilib/aiomultiprocess/blob/master/LICENSE)
 [![code style](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/ambv/black)
 
 On their own, AsyncIO and multiprocessing are useful, but limited:
