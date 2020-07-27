@@ -1,6 +1,22 @@
 aiomultiprocess
 ===============
 
+v0.8.0
+------
+
+Feature release
+
+- Pool.map/starmap can now be used in `async for` loops (#48)
+- Added support for alternate event loops and uvloop (#50)
+- Updated documentation, with a new user guide
+
+```
+$ git shortlog -s v0.7.0...v0.8.0
+    13	John Reese
+     1	Thomas Grainger
+```
+
+
 v0.7.0
 ------
 
@@ -18,7 +34,7 @@ Feature release
 $ git shortlog -s v0.6.1...v0.7.0
     12	Daniel Ip
      1	HJK
-    15	John Reese
+    17	John Reese
 ```
 
 
