@@ -26,21 +26,13 @@ async with Pool() as pool:
     results = await pool.map(<coroutine function>, <items>)
 ```
 
-For more context, watch the PyCon US 2018 talk about aiomultiprocess,
-["Thinking Outside the GIL"][pycon-2018]:
-
-> [![IMAGE ALT TEXT](http://img.youtube.com/vi/0kXaLh8Fz3k/0.jpg)](http://www.youtube.com/watch?v=0kXaLh8Fz3k "PyCon 2018 - John Reese - Thinking Outside the GIL with AsyncIO and Multiprocessing")
-
-Slides available at [Speaker Deck](https://speakerdeck.com/jreese/thinking-outside-the-gil-2).
-
-
 Install
 -------
 
 aiomultiprocess requires Python 3.6 or newer.
 You can install it from PyPI:
 
-```bash session
+```bash
 $ pip3 install aiomultiprocess
 ```
 
@@ -51,48 +43,9 @@ Usage
 Most of aiomultiprocess mimics the standard multiprocessing module whenever
 possible, while accounting for places that benefit from async functionality.
 
-Executing a coroutine on a child process is as simple as:
+Running your asynchronous jobs on a pool of worker processes is easy:
 
 ```python
-import asyncio
-from aiohttp import request
-from aiomultiprocess import Process
-
-async def put(url, params):
-    async with request("PUT", url, params=params) as response:
-        pass
-
-async def main():
-    p = Process(target=put, args=("https://jreese.sh", {}))
-    await p
-
-if __name__ == "__main__":
-    asyncio.run(main())
-```
-
-If you want to get results back from that coroutine, `Worker` makes that available:
-
-```python
-import asyncio
-from aiohttp import request
-from aiomultiprocess import Worker
-
-async def get(url):
-    async with request("GET", url) as response:
-        return await response.text("utf-8")
-
-async def main():
-    p = Worker(target=get, args=("https://jreese.sh", ))
-    response = await p
-
-if __name__ == "__main__":
-    asyncio.run(main())
-```
-
-If you want a managed pool of worker processes, then use `Pool`:
-
-```python
-import asyncio
 from aiohttp import request
 from aiomultiprocess import Pool
 
@@ -103,11 +56,18 @@ async def get(url):
 async def main():
     urls = ["https://jreese.sh", ...]
     async with Pool() as pool:
-        result = await pool.map(get, urls)
-
-if __name__ == "__main__":
-    asyncio.run(main())
+        async for result in pool.map(get, urls):
+            ...  # process result
 ```
+
+Take a look at the [User Guide][] for more details and examples.
+
+For further context, watch the PyCon US 2018 talk about aiomultiprocess,
+["Thinking Outside the GIL"][pycon-2018]:
+
+> [![IMAGE ALT TEXT](http://img.youtube.com/vi/0kXaLh8Fz3k/0.jpg)](http://www.youtube.com/watch?v=0kXaLh8Fz3k "PyCon 2018 - John Reese - Thinking Outside the GIL with AsyncIO and Multiprocessing")
+
+Slides available at [Speaker Deck](https://speakerdeck.com/jreese/thinking-outside-the-gil-2).
 
 
 License
@@ -119,4 +79,6 @@ source license.  This is my personal repository; the license you receive to
 my code is from me and not from my employer. See the `LICENSE` file for details.
 
 
+[User Guide]: https://aiomultiprocess.omnilib.dev/en/latest/guide.html
 [pycon-2018]: https://www.youtube.com/watch?v=0kXaLh8Fz3k
+

@@ -9,6 +9,7 @@ aiomultiprocess
     :hidden:
     :maxdepth: 2
 
+    guide
     api
 
 .. toctree::
