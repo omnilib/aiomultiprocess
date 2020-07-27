@@ -8,19 +8,31 @@ on:
   pull_request:
 
 jobs:
-  build:
+  aiomultiprocess:
     runs-on: ${{ matrix.os }}
+    continue-on-error: ${{ matrix.experimental }}
     strategy:
       fail-fast: false
       matrix:
         python-version: [3.6, 3.7, 3.8]
         os: [macOS-latest, ubuntu-latest]
+        experimental: [false]
+        include:
+          - python-version: 3.6
+            os: windows-latest
+            experimental: true
+          - python-version: 3.7
+            os: windows-latest
+            experimental: true
+          - python-version: 3.8
+            os: windows-latest
+            experimental: true
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v1
+        uses: actions/checkout@v2
       - name: Set Up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v1
+        uses: actions/setup-python@v2
         with:
           python-version: ${{ matrix.python-version }}
       - name: Install
