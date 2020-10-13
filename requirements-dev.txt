@@ -1,7 +1,7 @@
 attribution==1.1
 black==19.3b0
 codecov==2.0.15
-coverage==4.5.4
+coverage==5.3
 isort==4.3.20
 mypy==0.720
 pylint==2.3.1
