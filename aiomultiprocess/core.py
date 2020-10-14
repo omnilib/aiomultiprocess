@@ -92,15 +92,15 @@ class Process:
         process_target: Optional[Callable] = None,
     ) -> None:
         if target is not None and not asyncio.iscoroutinefunction(target):
-            raise ValueError(f"target must be coroutine function")
+            raise ValueError("target must be coroutine function")
 
         if initializer is not None and asyncio.iscoroutinefunction(initializer):
-            raise ValueError(f"initializer must be synchronous function")
+            raise ValueError("initializer must be synchronous function")
 
         if loop_initializer is not None and asyncio.iscoroutinefunction(
             loop_initializer
         ):
-            raise ValueError(f"loop_initializer must be synchronous function")
+            raise ValueError("loop_initializer must be synchronous function")
 
         self.unit = Unit(
             target=target or not_implemented,

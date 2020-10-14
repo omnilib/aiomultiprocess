@@ -1,13 +1,14 @@
 # Copyright 2018 John Reese
 # Licensed under the MIT license
 
+# pylint: disable=import-error,import-outside-toplevel
+
 import asyncio
 from unittest import TestCase
 
 import aiomultiprocess as amp
 from aiomultiprocess.core import get_context
 from aiomultiprocess.pool import PoolWorker, ProxyException
-
 from .base import async_test, mapper, raise_fn, starmapper, two
 
 

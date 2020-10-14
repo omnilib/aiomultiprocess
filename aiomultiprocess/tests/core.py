@@ -8,7 +8,6 @@ from unittest import TestCase
 from unittest.mock import patch
 
 import aiomultiprocess as amp
-
 from .base import (
     async_test,
     do_nothing,

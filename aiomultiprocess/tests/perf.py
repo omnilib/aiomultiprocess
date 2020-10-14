@@ -6,7 +6,6 @@ import time
 from unittest import TestCase
 
 import aiomultiprocess as amp
-
 from .base import perf_test
 
 PERF_SETS = [

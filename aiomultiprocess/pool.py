@@ -313,7 +313,7 @@ class Pool:
     ) -> R:
         """Run a single coroutine on the pool."""
         if not self.running:
-            raise RuntimeError(f"pool is closed")
+            raise RuntimeError("pool is closed")
 
         args = args or ()
         kwds = kwds or {}
@@ -330,7 +330,7 @@ class Pool:
     ) -> PoolResult[R]:
         """Run a coroutine once for each item in the iterable."""
         if not self.running:
-            raise RuntimeError(f"pool is closed")
+            raise RuntimeError("pool is closed")
 
         tids = [self.queue_work(func, (item,), {}) for item in iterable]
         return PoolResult(self, tids)
@@ -343,7 +343,7 @@ class Pool:
     ) -> PoolResult[R]:
         """Run a coroutine once for each sequence of items in the iterable."""
         if not self.running:
-            raise RuntimeError(f"pool is closed")
+            raise RuntimeError("pool is closed")
 
         tids = [self.queue_work(func, args, {}) for args in iterable]
         return PoolResult(self, tids)
@@ -366,6 +366,6 @@ class Pool:
     async def join(self) -> None:
         """Wait for the pool to finish gracefully."""
         if self.running:
-            raise RuntimeError(f"pool is still open")
+            raise RuntimeError("pool is still open")
 
         await self._loop
