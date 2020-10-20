@@ -47,6 +47,7 @@ possible, while accounting for places that benefit from async functionality.
 Running your asynchronous jobs on a pool of worker processes is easy:
 
 ```python
+import asyncio
 from aiohttp import request
 from aiomultiprocess import Pool
 
@@ -59,6 +60,14 @@ async def main():
     async with Pool() as pool:
         async for result in pool.map(get, urls):
             ...  # process result
+            
+if __name__ == '__main__':
+    # Python 3.7
+    asyncio.run(main())
+    
+    # Python 3.6
+    # loop = asyncio.get_event_loop()
+    # loop.run_until_complete(main())
 ```
 
 Take a look at the [User Guide][] for more details and examples.
