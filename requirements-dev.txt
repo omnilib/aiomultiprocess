@@ -7,6 +7,6 @@ pylint==2.6.0
 python-coveralls==2.9.3
 sphinx==3.2.1
 twine==3.2.0
-usort==0.5.0a3
+usort==0.6.0
 uvloop==0.14.0; sys_platform != "win32"
 git+https://github.com/miyakogi/m2r@66f4a5a500cdd9fc59085106bff082c9cadafaf3
