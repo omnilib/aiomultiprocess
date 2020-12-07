@@ -160,8 +160,9 @@ class CoreTest(TestCase):  # pylint: disable=too-many-public-methods
         async def inline(x):
             return x
 
-        with self.assertRaises(AttributeError):
-            await amp.Worker(target=inline, args=(1,), name="test_inline")
+        with self.assertRaisesRegex(AttributeError, "Can't pickle local object"):
+            _ = amp.Worker(target=inline, args=(1,), name="test_inline")
+            await _
 
         result = await amp.Worker(target=two, name="test_global")
         self.assertEqual(result, 2)
