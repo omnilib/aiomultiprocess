@@ -5,7 +5,7 @@ coverage==5.4
 mypy==0.812
 pylint==2.6.2
 python-coveralls==2.9.3
-sphinx==3.4.3
+sphinx==3.5.1
 twine==3.3.0
 usort==0.6.2
 uvloop==0.14.0; sys_platform != "win32"
