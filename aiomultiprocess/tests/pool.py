@@ -134,6 +134,19 @@ class PoolTest(TestCase):  # pylint: disable=too-many-public-methods
             with self.assertRaises(ProxyException):
                 await pool.apply(raise_fn, args=())
 
+    @async_test
+    async def test_pool_exception_handler(self):
+        exc_q = get_context().Queue()
+        handler = exc_q.put_nowait
+
+        async with amp.Pool(2, exception_handler=handler) as pool:
+            with self.assertRaises(ProxyException):
+                await pool.apply(raise_fn, args=())
+
+            exc = exc_q.get_nowait()
+            self.assertIsInstance(exc, RuntimeError)
+            self.assertEqual(exc.args, ("raising",))
+
     def test_pool_args(self):
         with self.assertRaisesRegex(ValueError, "queue count must be <= process"):
             amp.Pool(4, queuecount=9)
