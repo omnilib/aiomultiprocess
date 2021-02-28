@@ -6,8 +6,8 @@ AsyncIO version of the standard multiprocessing module
 """
 
 __author__ = "John Reese"
-__version__ = "0.8.0"
 
+from .__version__ import __version__
 from .core import Process, Worker, set_context, set_start_method
 from .pool import Pool, PoolResult
 from .scheduler import RoundRobin, Scheduler

@@ -1,0 +1,5 @@
+[tool.attribution]
+name = "aiomultiprocess"
+package = "aiomultiprocess"
+signed_tags = true
+version_file = true
