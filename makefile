@@ -1,9 +1,9 @@
 SRCS:=aiomultiprocess setup.py
 build:
-	python setup.py build
+	python -m flit build
 
 dev:
-	python setup.py develop
+	python -m flit install --symlink
 
 setup:
 	python -m pip install -Ur requirements-dev.txt
@@ -16,8 +16,7 @@ setup:
 venv: .venv
 
 release: lint test clean
-	python setup.py sdist
-	python -m twine upload dist/*
+	python -m flit publish
 
 format:
 	python -m usort format $(SRCS)
@@ -45,7 +44,3 @@ clean:
 
 distclean: clean
 	rm -rf .venv
-
-.PHONY: CHANGELOG.md
-CHANGELOG.md:
-	attribution > CHANGELOG.md

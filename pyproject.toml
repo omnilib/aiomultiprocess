@@ -1,5 +1,46 @@
+[build-system]
+requires = ["flit_core >=2,<4"]
+build-backend = "flit_core.buildapi"
+
+[tool.flit.metadata]
+module = "aiomultiprocess"
+author = "John Reese"
+author-email = "john@noswap.com"
+description-file = "README.md"
+home-page = "https://aiomultiprocess.omnilib.dev"
+requires = []
+requires-python = ">=3.6"
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Framework :: AsyncIO",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Topic :: Software Development :: Libraries",
+]
+
+[tool.flit.metadata.urls]
+Documentation = "https://aioitertools.omnilib.dev/en/latest/"
+Github = "https://github.com/omnilib/aioitertools"
+
+[tool.flit.sdist]
+exclude = [
+    ".github/",
+]
+
 [tool.attribution]
 name = "aiomultiprocess"
 package = "aiomultiprocess"
 signed_tags = true
 version_file = true
+
+[tool.coverage.run]
+branch = true
+include = ["aiomultiprocess/*"]
+omit = ["aiomultiprocess/tests/*"]
+concurrency = "multiprocessing"
+
+[tool.coverage.report]
+fail_under = 95
+precision = 1
+show_missing = true
+skip_covered = true
