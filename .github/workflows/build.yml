@@ -47,7 +47,6 @@ jobs:
         run: make test
       - name: Lint
         run: make lint
-        if: ${{ matrix.python-version != '3.9' }}
       - name: Coverage
         run: codecov --token ${{ secrets.CODECOV_TOKEN }} --branch ${{ github.ref }}
         continue-on-error: true
