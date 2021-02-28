@@ -37,7 +37,7 @@ version_file = true
 branch = true
 include = ["aiomultiprocess/*"]
 omit = ["aiomultiprocess/tests/*"]
-concurrency = "multiprocessing"
+concurrency = ["multiprocessing"]
 
 [tool.coverage.report]
 fail_under = 95

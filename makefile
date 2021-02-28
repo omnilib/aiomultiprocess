@@ -1,4 +1,4 @@
-SRCS:=aiomultiprocess setup.py
+SRCS:=aiomultiprocess
 build:
 	python -m flit build
 
