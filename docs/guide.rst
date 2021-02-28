@@ -155,6 +155,24 @@ arguments in each child process, after the async event loop has been created::
         ...
 
 
+Exceptions
+^^^^^^^^^^^^
+
+Exceptions raised in worker processes are silenced and transferred back to main
+process, where they are turned into :class:`~aiomultiprocess.types.ProxyException`
+objects.
+In some cases, you may want to something exceptions within the worker process itself.
+You can use provided "exception_handler" hook, for example::
+
+    import sentry_sdk
+    from aiomultiprocess import Pool
+
+    async with Pool(
+        exception_handler=sentry_sdk.capture_exception
+    ) as pool:
+        ...
+
+
 Using uvloop
 ^^^^^^^^^^^^
 

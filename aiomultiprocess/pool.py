@@ -54,6 +54,7 @@ class PoolWorker(Process):
         initializer: Optional[Callable] = None,
         initargs: Sequence[Any] = (),
         loop_initializer: Optional[LoopInitializer] = None,
+        exception_handler: Optional[Callable[[BaseException], None]] = None,
     ) -> None:
         super().__init__(
             target=self.run,
@@ -62,6 +63,7 @@ class PoolWorker(Process):
             loop_initializer=loop_initializer,
         )
         self.concurrency = max(1, concurrency)
+        self.exception_handler = exception_handler
         self.ttl = max(0, ttl)
         self.tx = tx
         self.rx = rx
@@ -106,7 +108,10 @@ class PoolWorker(Process):
                 tb = None
                 try:
                     result = future.result()
-                except BaseException:
+                except BaseException as e:
+                    if self.exception_handler is not None:
+                        self.exception_handler(e)
+
                     tb = traceback.format_exc()
 
                 self.rx.put_nowait((tid, result, tb))
@@ -153,6 +158,7 @@ class Pool:
         queuecount: Optional[int] = None,
         scheduler: Scheduler = None,
         loop_initializer: Optional[LoopInitializer] = None,
+        exception_handler: Optional[Callable[[BaseException], None]] = None,
     ) -> None:
         self.context = get_context()
 
@@ -168,6 +174,7 @@ class Pool:
         self.loop_initializer = loop_initializer
         self.maxtasksperchild = max(0, maxtasksperchild)
         self.childconcurrency = max(1, childconcurrency)
+        self.exception_handler = exception_handler
 
         self.processes: Dict[Process, QueueID] = {}
         self.queues: Dict[QueueID, Tuple[Queue, Queue]] = {}
@@ -249,6 +256,7 @@ class Pool:
             initializer=self.initializer,
             initargs=self.initargs,
             loop_initializer=self.loop_initializer,
+            exception_handler=self.exception_handler,
         )
         process.start()
         return process
