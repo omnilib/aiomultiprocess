@@ -1,6 +1,24 @@
 aiomultiprocess
 ===============
 
+v0.9.0
+------
+
+Feature release
+
+* Added uncaught exception handler for pool workers (#80, #82)
+* Fixed testing on Windows/Python 3.8 (#73)
+* Support for Python 3.9 (#83, #85)
+
+```
+$ git shortlog -s v0.8.0...v0.9.0
+     5	Dmitriy Ferens
+    15	John Reese
+     1	Pranab
+     4	pyup.io bot
+```
+
+
 v0.8.0
 ------
 
@@ -12,7 +30,7 @@ Feature release
 
 ```
 $ git shortlog -s v0.7.0...v0.8.0
-    13	John Reese
+    14	John Reese
      1	Thomas Grainger
 ```
 
@@ -128,5 +146,4 @@ Feature release:
 $ git shortlog -s d58104b244a984f37d2f672431b4a2fc7e74931b...v0.2.0
      1	John Reese
 ```
-
 
