@@ -45,7 +45,8 @@ autodoc_default_options = {
     "inherited-members": True,
 }
 autodoc_member_order = "bysource"
-# autodoc_typehints = "description"
+autodoc_typehints = "description"
+
 highlight_language = "python3"
 intersphinx_mapping = {"python": ("https://docs.python.org/3", None)}
 master_doc = "index"
