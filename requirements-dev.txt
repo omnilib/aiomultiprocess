@@ -9,6 +9,6 @@ pylint==2.7.2
 python-coveralls==2.9.3
 sphinx==3.5.2
 usort==0.6.2
-uvloop==0.14.0; python_version < "3.7" and sys_platform != "win32"
+uvloop==0.15.2; python_version < "3.7" and sys_platform != "win32"
 uvloop==0.15.2; python_version >= "3.7" and sys_platform != "win32"
 git+https://github.com/miyakogi/m2r@66f4a5a500cdd9fc59085106bff082c9cadafaf3
