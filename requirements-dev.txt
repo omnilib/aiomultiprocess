@@ -1,4 +1,4 @@
-astroid==2.5.6
+astroid==2.5.7
 attribution==1.5.2
 black==21.5b1
 codecov==2.1.11
