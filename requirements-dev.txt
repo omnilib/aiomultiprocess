@@ -7,7 +7,7 @@ flit==3.2.0
 mypy==0.902
 pylint==2.8.3
 python-coveralls==2.9.3
-sphinx==4.0.1
+sphinx==4.0.2
 usort==0.6.4
 uvloop==0.14.0; python_version < "3.7" and sys_platform != "win32"  # pyup: ignore
 uvloop==0.15.2; python_version >= "3.7" and sys_platform != "win32"
