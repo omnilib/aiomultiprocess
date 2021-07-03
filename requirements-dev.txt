@@ -4,7 +4,7 @@ black==21.6b0
 codecov==2.1.11
 coverage==5.5
 flit==3.2.0
-mypy==0.812
+mypy==0.910
 pylint==2.8.2
 python-coveralls==2.9.3
 sphinx==4.0.1
