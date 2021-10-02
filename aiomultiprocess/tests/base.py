@@ -37,7 +37,7 @@ def initializer(value):
     global DUMMY_CONSTANT
 
     DUMMY_CONSTANT = value
-    _loop = asyncio.get_event_loop()
+    asyncio.get_event_loop()
 
 
 async def get_dummy_constant():

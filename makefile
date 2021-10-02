@@ -1,4 +1,5 @@
-SRCS:=aiomultiprocess
+PKG:=aiomultiprocess
+
 build:
 	python -m flit build
 
@@ -19,19 +20,19 @@ release: lint test clean
 	python -m flit publish
 
 format:
-	python -m usort format $(SRCS)
-	python -m black $(SRCS)
+	python -m usort format $(PKG)
+	python -m black $(PKG)
 
 lint:
-	python -m mypy $(SRCS)
-	python -m pylint --rcfile .pylint $(SRCS)
-	python -m usort check $(SRCS)
-	python -m black --check $(SRCS)
+	python -m flake8 $(PKG)
+	python -m usort check $(PKG)
+	python -m black --check $(PKG)
 
 test:
 	python -m coverage run -m aiomultiprocess.tests
 	python -m coverage combine
 	python -m coverage report
+	python -m mypy $(PKG)
 
 perf:
 	export PERF_TESTS=1 && make test

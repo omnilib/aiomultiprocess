@@ -19,7 +19,7 @@ from .base import (
 )
 
 
-class CoreTest(TestCase):  # pylint: disable=too-many-public-methods
+class CoreTest(TestCase):
     def setUp(self):
         # reset to default context before each test
         amp.set_start_method()

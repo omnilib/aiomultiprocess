@@ -1,0 +1,13 @@
+[flake8]
+ignore =
+    # mccabe complexity
+    C901
+
+    # covered by black/usort
+    E1
+    E2
+    E3
+    E4
+max-line-length = 88
+per-file-ignores =
+    __init__.py: F401

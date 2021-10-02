@@ -3,9 +3,10 @@ attribution==1.5.2
 black==21.9b0
 codecov==2.1.12
 coverage==5.5
+flake8==3.9.2
+flake8-bugbear==21.9.2
 flit==3.3.0
 mypy==0.910
-pylint==2.10.2
 python-coveralls==2.9.3
 sphinx==4.2.0
 usort==0.6.4

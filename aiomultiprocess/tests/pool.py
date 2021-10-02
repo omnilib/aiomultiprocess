@@ -1,7 +1,6 @@
 # Copyright 2018 John Reese
 # Licensed under the MIT license
 
-# pylint: disable=import-error,import-outside-toplevel
 
 import asyncio
 from unittest import TestCase
@@ -19,7 +18,7 @@ async def check_uvloop():
     return isinstance(loop, uvloop.Loop)
 
 
-class PoolTest(TestCase):  # pylint: disable=too-many-public-methods
+class PoolTest(TestCase):
     @async_test
     async def test_pool_worker_max_tasks(self):
         tx = get_context().Queue()
