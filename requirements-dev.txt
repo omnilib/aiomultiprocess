@@ -5,7 +5,7 @@ codecov==2.1.12
 coverage==5.5
 flit==3.3.0
 mypy==0.910
-pylint==2.10.2
+pylint==2.11.1
 python-coveralls==2.9.3
 sphinx==4.1.2
 usort==0.6.4
