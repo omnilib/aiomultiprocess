@@ -7,7 +7,7 @@ flake8-bugbear==21.9.2
 flit==3.5.0
 mypy==0.910
 python-coveralls==2.9.3
-sphinx==4.3.0
+sphinx==4.3.1
 usort==0.6.4
 uvloop==0.14.0; python_version < "3.7" and sys_platform != "win32"  # pyup: ignore
 uvloop==0.16.0; python_version >= "3.7" and sys_platform != "win32"
