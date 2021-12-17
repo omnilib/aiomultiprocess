@@ -20,7 +20,7 @@ from typing import (
     TypeVar,
 )
 
-from .core import Process, get_context
+from .core import get_context, Process
 from .scheduler import RoundRobin, Scheduler
 from .types import (
     LoopInitializer,
