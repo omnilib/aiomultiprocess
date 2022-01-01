@@ -4,7 +4,7 @@ codecov==2.1.12
 coverage==6.2
 flake8==4.0.1
 flake8-bugbear==21.11.29
-flit==3.5.1
+flit==3.6.0
 mypy==0.910
 python-coveralls==2.9.3
 sphinx==4.3.1
