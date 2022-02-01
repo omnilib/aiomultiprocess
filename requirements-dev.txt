@@ -5,7 +5,7 @@ coverage==6.2
 flake8==4.0.1
 flake8-bugbear==21.11.29
 flit==3.6.0
-mypy==0.930
+mypy==0.931
 python-coveralls==2.9.3
 sphinx==4.3.2
 sphinx-mdinclude==0.4.0b1
