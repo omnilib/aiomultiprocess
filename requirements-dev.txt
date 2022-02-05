@@ -1,5 +1,5 @@
 attribution==1.5.2
-black==21.12b0
+black==22.1.0
 codecov==2.1.12
 coverage==6.2
 flake8==4.0.1
