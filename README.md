@@ -75,7 +75,7 @@ Take a look at the [User Guide][] for more details and examples.
 For further context, watch the PyCon US 2018 talk about aiomultiprocess,
 ["Thinking Outside the GIL"][pycon-2018]:
 
-> [![IMAGE ALT TEXT](http://img.youtube.com/vi/0kXaLh8Fz3k/0.jpg)](http://www.youtube.com/watch?v=0kXaLh8Fz3k "PyCon 2018 - John Reese - Thinking Outside the GIL with AsyncIO and Multiprocessing")
+> [![IMAGE ALT TEXT](http://img.youtube.com/vi/0kXaLh8Fz3k/0.jpg)](http://www.youtube.com/watch?v=0kXaLh8Fz3k "PyCon 2018 - Amethyst Reese - Thinking Outside the GIL with AsyncIO and Multiprocessing")
 
 Slides available at [Speaker Deck](https://speakerdeck.com/jreese/thinking-outside-the-gil-2).
 
@@ -83,7 +83,7 @@ Slides available at [Speaker Deck](https://speakerdeck.com/jreese/thinking-outsi
 License
 -------
 
-aiomultiprocess is copyright [John Reese](https://jreese.sh), and licensed under
+aiomultiprocess is copyright [Amethyst Reese](https://jreese.sh), and licensed under
 the MIT license.  I am providing code in this repository to you under an open
 source license.  This is my personal repository; the license you receive to
 my code is from me and not from my employer. See the `LICENSE` file for details.

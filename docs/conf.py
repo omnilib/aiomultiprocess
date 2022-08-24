@@ -20,8 +20,8 @@
 import datetime
 
 project = "aiomultiprocess"
-copyright = f"{datetime.date.today().year}, John Reese"
-author = "John Reese"
+copyright = f"{datetime.date.today().year}, Amethyst Reese"
+author = "Amethyst Reese"
 
 
 # -- General configuration ---------------------------------------------------
