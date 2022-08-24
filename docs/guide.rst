@@ -15,7 +15,7 @@ coroutines on multiple worker processes::
             return await response.text("utf-8")
 
     async def main():
-        urls = ["https://jreese.sh", ...]
+        urls = ["https://noswap.com", ...]
         async with Pool() as pool:
             async for result in pool.map(get, urls):
                 ...  # process result
@@ -38,7 +38,7 @@ a fresh child process and and return the final result back to the main process::
     async def main():
         result = await Worker(
             target=get,
-            args=("https://jreese.sh",),
+            args=("https://noswap.com",),
             kwargs={"method": "GET"}
         )
 
@@ -49,7 +49,7 @@ method::
     async def main():
         worker = Worker(
             target=get,
-            args=("https://jreese.sh",),
+            args=("https://noswap.com",),
             kwargs={"method": "GET"}
         )
         worker.start()
@@ -74,7 +74,7 @@ Individual jobs can be queued using the ``apply()`` method::
 
     async with Pool() as pool:
         a, b, c = gather(
-            pool.apply(get, "https://jreese.sh"),
+            pool.apply(get, "https://github.com"),
             pool.apply(get, "https://noswap.com"),
             pool.apply(get, "https://omnilib.dev"),
         )

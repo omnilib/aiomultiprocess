@@ -56,7 +56,7 @@ async def get(url):
         return await response.text("utf-8")
 
 async def main():
-    urls = ["https://jreese.sh", ...]
+    urls = ["https://noswap.com", ...]
     async with Pool() as pool:
         async for result in pool.map(get, urls):
             ...  # process result
@@ -83,7 +83,7 @@ Slides available at [Speaker Deck](https://speakerdeck.com/jreese/thinking-outsi
 License
 -------
 
-aiomultiprocess is copyright [Amethyst Reese](https://jreese.sh), and licensed under
+aiomultiprocess is copyright [Amethyst Reese](https://noswap.com), and licensed under
 the MIT license.  I am providing code in this repository to you under an open
 source license.  This is my personal repository; the license you receive to
 my code is from me and not from my employer. See the `LICENSE` file for details.
