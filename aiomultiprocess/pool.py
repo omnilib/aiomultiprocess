@@ -20,19 +20,11 @@ from typing import (
     TypeVar,
 )
 
-from .core import get_context, Process
+from aiohttp import ClientSession, ClientTimeout, TCPConnector
+
+from .core import Process, get_context
 from .scheduler import RoundRobin, Scheduler
-from .types import (
-    LoopInitializer,
-    PoolTask,
-    ProxyException,
-    Queue,
-    QueueID,
-    R,
-    T,
-    TaskID,
-    TracebackStr,
-)
+from .types import LoopInitializer, PoolTask, ProxyException, Queue, QueueID, R, T, TaskID, TracebackStr
 
 MAX_TASKS_PER_CHILD = 0  # number of tasks to execute before recycling a child process
 CHILD_CONCURRENCY = 16  # number of tasks to execute simultaneously per child process
@@ -55,6 +47,8 @@ class PoolWorker(Process):
         initargs: Sequence[Any] = (),
         loop_initializer: Optional[LoopInitializer] = None,
         exception_handler: Optional[Callable[[BaseException], None]] = None,
+        init_client_session: bool = False,
+        session_base_url: Optional[str] = None,
     ) -> None:
         super().__init__(
             target=self.run,
@@ -64,9 +58,22 @@ class PoolWorker(Process):
         )
         self.concurrency = max(1, concurrency)
         self.exception_handler = exception_handler
+        self.init_client_session = init_client_session
+        self.session_base_url = session_base_url
         self.ttl = max(0, ttl)
         self.tx = tx
         self.rx = rx
+        self.client_session: Optional[ClientSession] = None
+        if self.init_client_session:
+            self.client_session = self._init_client_session()
+
+    def _init_client_session(self) -> ClientSession:
+        """Initialize a client session for this worker."""
+        return ClientSession(
+            connector=TCPConnector(limit_per_host=max(100, self.concurrency), use_dns_cache=True),
+            timeout=ClientTimeout(total=60),
+            base_url=self.session_base_url if self.session_base_url else None,
+        )
 
     async def run(self) -> None:
         """Pick up work, execute work, return results, rinse, repeat."""
@@ -90,6 +97,8 @@ class PoolWorker(Process):
                     break
 
                 tid, func, args, kwargs = task
+                if self.client_session:
+                    args = [self.client_session, *args]
                 future = asyncio.ensure_future(func(*args, **kwargs))
                 pending[future] = tid
 
@@ -98,9 +107,7 @@ class PoolWorker(Process):
                 continue
 
             # return results and/or exceptions when completed
-            done, _ = await asyncio.wait(
-                pending.keys(), timeout=0.05, return_when=asyncio.FIRST_COMPLETED
-            )
+            done, _ = await asyncio.wait(pending.keys(), timeout=0.05, return_when=asyncio.FIRST_COMPLETED)
             for future in done:
                 tid = pending.pop(future)
 
@@ -159,6 +166,8 @@ class Pool:
         scheduler: Scheduler = None,
         loop_initializer: Optional[LoopInitializer] = None,
         exception_handler: Optional[Callable[[BaseException], None]] = None,
+        init_client_session: bool = True,
+        session_base_url: Optional[str] = None,
     ) -> None:
         self.context = get_context()
 
@@ -175,6 +184,8 @@ class Pool:
         self.maxtasksperchild = max(0, maxtasksperchild)
         self.childconcurrency = max(1, childconcurrency)
         self.exception_handler = exception_handler
+        self.init_client_session = init_client_session
+        self.session_base_url = session_base_url
 
         self.processes: Dict[Process, QueueID] = {}
         self.queues: Dict[QueueID, Tuple[Queue, Queue]] = {}
@@ -257,6 +268,8 @@ class Pool:
             initargs=self.initargs,
             loop_initializer=self.loop_initializer,
             exception_handler=self.exception_handler,
+            init_client_session=self.init_client_session,
+            session_base_url=self.session_base_url,
         )
         process.start()
         return process
@@ -280,9 +293,7 @@ class Pool:
         tx.put_nowait((task_id, func, args, kwargs))
         return task_id
 
-    def finish_work(
-        self, task_id: TaskID, value: Any, tb: Optional[TracebackStr]
-    ) -> None:
+    def finish_work(self, task_id: TaskID, value: Any, tb: Optional[TracebackStr]) -> None:
         """
         Mark work items as completed.
 
