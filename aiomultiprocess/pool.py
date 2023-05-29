@@ -98,7 +98,7 @@ class PoolWorker(Process):
 
                 tid, func, args, kwargs = task
                 if self.client_session:
-                    args = [self.client_session, *args]
+                    args = [self.client_session, *args]  # NOTE: adds client session to the args list
                 future = asyncio.ensure_future(func(*args, **kwargs))
                 pending[future] = tid
 
