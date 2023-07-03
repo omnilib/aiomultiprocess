@@ -1,5 +1,5 @@
 import multiprocessing
-from asyncio import BaseEventLoop
+from asyncio import BaseEventLoop, BaseProtocol
 from typing import Any, Callable, Dict, NamedTuple, NewType, Optional, Sequence, Tuple, TypeVar
 
 T = TypeVar("T")
@@ -16,6 +16,8 @@ TracebackStr = str
 LoopInitializer = Callable[..., BaseEventLoop]
 PoolTask = Optional[Tuple[TaskID, Callable[..., R], Sequence[T], Dict[str, T]]]
 PoolResult = Tuple[TaskID, Optional[R], Optional[TracebackStr]]
+
+Session = NewType("Session", BaseProtocol)
 
 
 class Unit(NamedTuple):
