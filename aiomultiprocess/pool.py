@@ -20,9 +20,11 @@ from typing import (
     TypeVar,
 )
 
+from aiohttp import ClientSession, ClientTimeout, TCPConnector
+
 from .core import Process, get_context
 from .scheduler import RoundRobin, Scheduler
-from .types import LoopInitializer, PoolTask, ProxyException, Queue, QueueID, R, Session, T, TaskID, TracebackStr
+from .types import LoopInitializer, PoolTask, ProxyException, Queue, QueueID, R, T, TaskID, TracebackStr
 
 MAX_TASKS_PER_CHILD = 0  # number of tasks to execute before recycling a child process
 CHILD_CONCURRENCY = 16  # number of tasks to execute simultaneously per child process
@@ -45,8 +47,8 @@ class PoolWorker(Process):
         initargs: Sequence[Any] = (),
         loop_initializer: Optional[LoopInitializer] = None,
         exception_handler: Optional[Callable[[BaseException], None]] = None,
-        client_session: Optional[Session] = None,
-        session_kwargs: Optional[dict] = None,
+        init_client_session: bool = False,
+        session_base_url: Optional[str] = None,
     ) -> None:
         super().__init__(
             target=self.run,
@@ -56,19 +58,24 @@ class PoolWorker(Process):
         )
         self.concurrency = max(1, concurrency)
         self.exception_handler = exception_handler
-        self.client_session = client_session
-        self.session_kwargs = session_kwargs
+        self.init_client_session = init_client_session
+        self.session_base_url = session_base_url
         self.ttl = max(0, ttl)
         self.tx = tx
         self.rx = rx
 
-    def _init_client_session(self) -> Session:
+    def _init_client_session(self) -> ClientSession:
         """Initialize a client session for this worker."""
-        return self.client_session(**self.session_kwargs) if self.client_session else None
+        pass
+        # return
 
     async def run(self) -> None:
         """Initiate a connection pool, pick up work, execute work, return results, rinse, repeat."""
-        async with self._init_client_session() as client_session:
+        async with ClientSession(
+            connector=TCPConnector(limit_per_host=max(100, self.concurrency), use_dns_cache=True),
+            timeout=ClientTimeout(total=60),
+            base_url=self.session_base_url if self.session_base_url else None,
+        ) as client_session:
             pending: Dict[asyncio.Future, TaskID] = {}
             completed = 0
             running = True
@@ -89,10 +96,7 @@ class PoolWorker(Process):
                         break
 
                     tid, func, args, kwargs = task
-
-                    # NOTE: adds client session to the args list
-                    if self.client_session:
-                        args = [*args, client_session]
+                    args = [*args, client_session]  # NOTE: adds client session to the args list
                     future = asyncio.ensure_future(func(*args, **kwargs))
                     pending[future] = tid
 
