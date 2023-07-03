@@ -160,8 +160,8 @@ class Pool:
         scheduler: Scheduler = None,
         loop_initializer: Optional[LoopInitializer] = None,
         exception_handler: Optional[Callable[[BaseException], None]] = None,
-        client_session: Session = True,
-        session_kwargs: Optional[dict] = None,
+        init_client_session: bool = True,
+        session_base_url: Optional[str] = None,
     ) -> None:
         self.context = get_context()
 
@@ -178,8 +178,8 @@ class Pool:
         self.maxtasksperchild = max(0, maxtasksperchild)
         self.childconcurrency = max(1, childconcurrency)
         self.exception_handler = exception_handler
-        self.client_session = client_session
-        self.session_kwargs = session_kwargs
+        self.init_client_session = init_client_session
+        self.session_base_url = session_base_url
 
         self.processes: Dict[Process, QueueID] = {}
         self.queues: Dict[QueueID, Tuple[Queue, Queue]] = {}
@@ -262,8 +262,8 @@ class Pool:
             initargs=self.initargs,
             loop_initializer=self.loop_initializer,
             exception_handler=self.exception_handler,
-            client_session=self.client_session,
-            session_kwargs=self.session_kwargs,
+            init_client_session=self.init_client_session,
+            session_base_url=self.session_base_url,
         )
         process.start()
         return process
