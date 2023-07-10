@@ -50,6 +50,8 @@ class PoolWorker(Process):
         init_client_session: bool = False,
         session_base_url: Optional[str] = None,
     ) -> None:
+        self.init_client_session = init_client_session
+        self.session_base_url = session_base_url
         super().__init__(
             target=self.run,
             initializer=initializer,
@@ -58,24 +60,65 @@ class PoolWorker(Process):
         )
         self.concurrency = max(1, concurrency)
         self.exception_handler = exception_handler
-        self.init_client_session = init_client_session
-        self.session_base_url = session_base_url
         self.ttl = max(0, ttl)
         self.tx = tx
         self.rx = rx
 
-    def _init_client_session(self) -> ClientSession:
-        """Initialize a client session for this worker."""
-        pass
-        # return
-
     async def run(self) -> None:
         """Initiate a connection pool, pick up work, execute work, return results, rinse, repeat."""
-        async with ClientSession(
-            connector=TCPConnector(limit_per_host=max(100, self.concurrency), use_dns_cache=True),
-            timeout=ClientTimeout(total=60),
-            base_url=self.session_base_url if self.session_base_url else None,
-        ) as client_session:
+        if self.init_client_session:
+            async with ClientSession(
+                connector=TCPConnector(limit_per_host=max(100, self.concurrency), use_dns_cache=True),
+                timeout=ClientTimeout(total=60),
+                base_url=self.session_base_url if self.session_base_url else None,
+            ) as client_session:
+                pending: Dict[asyncio.Future, TaskID] = {}
+                completed = 0
+                running = True
+                while running or pending:
+                    # TTL, Tasks To Live, determines how many tasks to execute before dying
+                    if self.ttl and completed >= self.ttl:
+                        running = False
+
+                    # pick up new work as long as we're "running" and we have open slots
+                    while running and len(pending) < self.concurrency:
+                        try:
+                            task: PoolTask = self.tx.get_nowait()
+                        except queue.Empty:
+                            break
+
+                        if task is None:
+                            running = False
+                            break
+
+                        tid, func, args, kwargs = task
+                        # print(f"W/ Session. Args: {args}, and kwargs: {kwargs}")
+                        args = [*args, client_session]  # NOTE: adds client session to the args list
+                        future = asyncio.ensure_future(func(*args, **kwargs))
+                        pending[future] = tid
+
+                    if not pending:
+                        await asyncio.sleep(0.005)
+                        continue
+
+                    # return results and/or exceptions when completed
+                    done, _ = await asyncio.wait(pending.keys(), timeout=0.05, return_when=asyncio.FIRST_COMPLETED)
+                    for future in done:
+                        tid = pending.pop(future)
+
+                        result = None
+                        tb = None
+                        try:
+                            result = future.result()
+                        except BaseException as e:
+                            if self.exception_handler is not None:
+                                self.exception_handler(e)
+
+                            tb = traceback.format_exc()
+
+                        self.rx.put_nowait((tid, result, tb))
+                        completed += 1
+        else:
             pending: Dict[asyncio.Future, TaskID] = {}
             completed = 0
             running = True
@@ -96,7 +139,7 @@ class PoolWorker(Process):
                         break
 
                     tid, func, args, kwargs = task
-                    args = [*args, client_session]  # NOTE: adds client session to the args list
+                    # print(f"No client session. Args: {args}, and kwargs: {kwargs}")
                     future = asyncio.ensure_future(func(*args, **kwargs))
                     pending[future] = tid
 
@@ -164,7 +207,7 @@ class Pool:
         scheduler: Scheduler = None,
         loop_initializer: Optional[LoopInitializer] = None,
         exception_handler: Optional[Callable[[BaseException], None]] = None,
-        init_client_session: bool = True,
+        init_client_session: bool = False,
         session_base_url: Optional[str] = None,
     ) -> None:
         self.context = get_context()
