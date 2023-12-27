@@ -13,7 +13,7 @@ Feature release
 ```
 $ git shortlog -s v0.8.0...v0.9.0
      5	Dmitriy Ferens
-    15	John Reese
+    15	Amethyst Reese
      1	Pranab
      4	pyup.io bot
 ```
@@ -30,7 +30,7 @@ Feature release
 
 ```
 $ git shortlog -s v0.7.0...v0.8.0
-    14	John Reese
+    14	Amethyst Reese
      1	Thomas Grainger
 ```
 
@@ -52,7 +52,7 @@ Feature release
 $ git shortlog -s v0.6.1...v0.7.0
     12	Daniel Ip
      1	HJK
-    17	John Reese
+    17	Amethyst Reese
 ```
 
 
@@ -67,7 +67,7 @@ Minor release v0.6.1
 ```
 $ git shortlog -s v0.6.0...v0.6.1
      9	Daniel Ip
-     6	John Reese
+     6	Amethyst Reese
 ```
 
 
@@ -84,7 +84,7 @@ Feature release v0.6.0
 ```
 $ git shortlog -s v0.5.0...v0.6.0
      1	Daniel Ip
-    18	John Reese
+    18	Amethyst Reese
 ```
 
 
@@ -100,7 +100,7 @@ Feature release v0.5.0:
 
 ```
 $ git shortlog -s v0.4.0...v0.5.0
-    15	John Reese
+    15	Amethyst Reese
      1	smheidrich
      1	x1ah
 ```
@@ -117,7 +117,7 @@ Feature release v0.4.0:
 
 ```
 $ git shortlog -s v0.3.0...v0.4.0
-    12	John Reese
+    12	Amethyst Reese
 ```
 
 
@@ -131,7 +131,7 @@ Feature release:
 
 ```
 $ git shortlog -s v0.2.0...v0.3.0
-    10	John Reese
+    10	Amethyst Reese
 ```
 
 
@@ -144,6 +144,6 @@ Feature release:
 
 ```
 $ git shortlog -s d58104b244a984f37d2f672431b4a2fc7e74931b...v0.2.0
-     1	John Reese
+     1	Amethyst Reese
 ```
 
