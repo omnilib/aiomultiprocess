@@ -1,19 +1,6 @@
-# Copyright 2022 Amethyst Reese
-# Licensed under the MIT license
-
 import multiprocessing
 from asyncio import BaseEventLoop
-from typing import (
-    Any,
-    Callable,
-    Dict,
-    NamedTuple,
-    NewType,
-    Optional,
-    Sequence,
-    Tuple,
-    TypeVar,
-)
+from typing import Any, Callable, Dict, NamedTuple, NewType, Optional, Sequence, Tuple, TypeVar
 
 T = TypeVar("T")
 R = TypeVar("R")

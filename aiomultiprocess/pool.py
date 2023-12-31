@@ -20,19 +20,11 @@ from typing import (
     TypeVar,
 )
 
-from .core import get_context, Process
+from aiohttp import ClientSession, ClientTimeout, TCPConnector
+
+from .core import Process, get_context
 from .scheduler import RoundRobin, Scheduler
-from .types import (
-    LoopInitializer,
-    PoolTask,
-    ProxyException,
-    Queue,
-    QueueID,
-    R,
-    T,
-    TaskID,
-    TracebackStr,
-)
+from .types import LoopInitializer, PoolTask, ProxyException, Queue, QueueID, R, T, TaskID, TracebackStr
 
 MAX_TASKS_PER_CHILD = 0  # number of tasks to execute before recycling a child process
 CHILD_CONCURRENCY = 16  # number of tasks to execute simultaneously per child process
@@ -55,7 +47,11 @@ class PoolWorker(Process):
         initargs: Sequence[Any] = (),
         loop_initializer: Optional[LoopInitializer] = None,
         exception_handler: Optional[Callable[[BaseException], None]] = None,
+        init_client_session: bool = False,
+        session_base_url: Optional[str] = None,
     ) -> None:
+        self.init_client_session = init_client_session
+        self.session_base_url = session_base_url
         super().__init__(
             target=self.run,
             initializer=initializer,
@@ -69,53 +65,105 @@ class PoolWorker(Process):
         self.rx = rx
 
     async def run(self) -> None:
-        """Pick up work, execute work, return results, rinse, repeat."""
-        pending: Dict[asyncio.Future, TaskID] = {}
-        completed = 0
-        running = True
-        while running or pending:
-            # TTL, Tasks To Live, determines how many tasks to execute before dying
-            if self.ttl and completed >= self.ttl:
-                running = False
+        """Initiate a connection pool, pick up work, execute work, return results, rinse, repeat."""
+        if self.init_client_session:
+            async with ClientSession(
+                connector=TCPConnector(limit_per_host=max(100, self.concurrency), use_dns_cache=True),
+                timeout=ClientTimeout(total=60),
+                base_url=self.session_base_url if self.session_base_url else None,
+            ) as client_session:
+                pending: Dict[asyncio.Future, TaskID] = {}
+                completed = 0
+                running = True
+                while running or pending:
+                    # TTL, Tasks To Live, determines how many tasks to execute before dying
+                    if self.ttl and completed >= self.ttl:
+                        running = False
 
-            # pick up new work as long as we're "running" and we have open slots
-            while running and len(pending) < self.concurrency:
-                try:
-                    task: PoolTask = self.tx.get_nowait()
-                except queue.Empty:
-                    break
+                    # pick up new work as long as we're "running" and we have open slots
+                    while running and len(pending) < self.concurrency:
+                        try:
+                            task: PoolTask = self.tx.get_nowait()
+                        except queue.Empty:
+                            break
 
-                if task is None:
+                        if task is None:
+                            running = False
+                            break
+
+                        tid, func, args, kwargs = task
+                        # print(f"W/ Session. Args: {args}, and kwargs: {kwargs}")
+                        args = [*args, client_session]  # NOTE: adds client session to the args list
+                        future = asyncio.ensure_future(func(*args, **kwargs))
+                        pending[future] = tid
+
+                    if not pending:
+                        await asyncio.sleep(0.005)
+                        continue
+
+                    # return results and/or exceptions when completed
+                    done, _ = await asyncio.wait(pending.keys(), timeout=0.05, return_when=asyncio.FIRST_COMPLETED)
+                    for future in done:
+                        tid = pending.pop(future)
+
+                        result = None
+                        tb = None
+                        try:
+                            result = future.result()
+                        except BaseException as e:
+                            if self.exception_handler is not None:
+                                self.exception_handler(e)
+
+                            tb = traceback.format_exc()
+
+                        self.rx.put_nowait((tid, result, tb))
+                        completed += 1
+        else:
+            pending: Dict[asyncio.Future, TaskID] = {}
+            completed = 0
+            running = True
+            while running or pending:
+                # TTL, Tasks To Live, determines how many tasks to execute before dying
+                if self.ttl and completed >= self.ttl:
                     running = False
-                    break
 
-                tid, func, args, kwargs = task
-                future = asyncio.ensure_future(func(*args, **kwargs))
-                pending[future] = tid
+                # pick up new work as long as we're "running" and we have open slots
+                while running and len(pending) < self.concurrency:
+                    try:
+                        task: PoolTask = self.tx.get_nowait()
+                    except queue.Empty:
+                        break
 
-            if not pending:
-                await asyncio.sleep(0.005)
-                continue
+                    if task is None:
+                        running = False
+                        break
 
-            # return results and/or exceptions when completed
-            done, _ = await asyncio.wait(
-                pending.keys(), timeout=0.05, return_when=asyncio.FIRST_COMPLETED
-            )
-            for future in done:
-                tid = pending.pop(future)
+                    tid, func, args, kwargs = task
+                    # print(f"No client session. Args: {args}, and kwargs: {kwargs}")
+                    future = asyncio.ensure_future(func(*args, **kwargs))
+                    pending[future] = tid
 
-                result = None
-                tb = None
-                try:
-                    result = future.result()
-                except BaseException as e:
-                    if self.exception_handler is not None:
-                        self.exception_handler(e)
+                if not pending:
+                    await asyncio.sleep(0.005)
+                    continue
 
-                    tb = traceback.format_exc()
+                # return results and/or exceptions when completed
+                done, _ = await asyncio.wait(pending.keys(), timeout=0.05, return_when=asyncio.FIRST_COMPLETED)
+                for future in done:
+                    tid = pending.pop(future)
 
-                self.rx.put_nowait((tid, result, tb))
-                completed += 1
+                    result = None
+                    tb = None
+                    try:
+                        result = future.result()
+                    except BaseException as e:
+                        if self.exception_handler is not None:
+                            self.exception_handler(e)
+
+                        tb = traceback.format_exc()
+
+                    self.rx.put_nowait((tid, result, tb))
+                    completed += 1
 
 
 class PoolResult(Awaitable[Sequence[_T]], AsyncIterable[_T]):
@@ -159,6 +207,8 @@ class Pool:
         scheduler: Scheduler = None,
         loop_initializer: Optional[LoopInitializer] = None,
         exception_handler: Optional[Callable[[BaseException], None]] = None,
+        init_client_session: bool = False,
+        session_base_url: Optional[str] = None,
     ) -> None:
         self.context = get_context()
 
@@ -175,6 +225,8 @@ class Pool:
         self.maxtasksperchild = max(0, maxtasksperchild)
         self.childconcurrency = max(1, childconcurrency)
         self.exception_handler = exception_handler
+        self.init_client_session = init_client_session
+        self.session_base_url = session_base_url
 
         self.processes: Dict[Process, QueueID] = {}
         self.queues: Dict[QueueID, Tuple[Queue, Queue]] = {}
@@ -257,6 +309,8 @@ class Pool:
             initargs=self.initargs,
             loop_initializer=self.loop_initializer,
             exception_handler=self.exception_handler,
+            init_client_session=self.init_client_session,
+            session_base_url=self.session_base_url,
         )
         process.start()
         return process
@@ -280,9 +334,7 @@ class Pool:
         tx.put_nowait((task_id, func, args, kwargs))
         return task_id
 
-    def finish_work(
-        self, task_id: TaskID, value: Any, tb: Optional[TracebackStr]
-    ) -> None:
+    def finish_work(self, task_id: TaskID, value: Any, tb: Optional[TracebackStr]) -> None:
         """
         Mark work items as completed.
 
