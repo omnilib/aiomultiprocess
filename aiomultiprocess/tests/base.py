@@ -48,6 +48,10 @@ async def raise_fn():
     raise RuntimeError("raising")
 
 
+async def raise_keyboard_interrupt():
+    raise KeyboardInterrupt()
+
+
 async def terminate(process):
     await asyncio.sleep(0.5)
     process.terminate()

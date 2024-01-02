@@ -14,6 +14,7 @@ from .base import (
     get_dummy_constant,
     initializer,
     raise_fn,
+    raise_keyboard_interrupt,
     sleepy,
     two,
 )
@@ -223,6 +224,13 @@ class CoreTest(TestCase):
             target=raise_fn, name="test_process", initializer=do_nothing
         )
         self.assertIsInstance(result, RuntimeError)
+
+    @async_test
+    async def test_keyboard_interrupt(self):
+        result = await amp.Worker(
+            target=raise_keyboard_interrupt, name="test_process", initializer=do_nothing
+        )
+        self.assertIsNone(result)
 
     @async_test
     async def test_sync_target(self):

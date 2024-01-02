@@ -127,7 +127,7 @@ class Process:
         return self.join().__await__()
 
     @staticmethod
-    def run_async(unit: Unit) -> R:
+    def run_async(unit: Unit) -> Optional[R]:
         """Initialize the child process and event loop, then execute the coroutine."""
         try:
             if unit.loop_initializer is None:
@@ -143,7 +143,8 @@ class Process:
             result: R = loop.run_until_complete(unit.target(*unit.args, **unit.kwargs))
 
             return result
-
+        except KeyboardInterrupt:
+            return None
         except BaseException:
             log.exception(f"aio process {os.getpid()} failed")
             raise
@@ -216,13 +217,14 @@ class Worker(Process):
         self.unit.namespace.result = None
 
     @staticmethod
-    def run_async(unit: Unit) -> R:
+    def run_async(unit: Unit) -> Optional[R]:
         """Initialize the child process and event loop, then execute the coroutine."""
         try:
-            result: R = Process.run_async(unit)
+            result: Optional[R] = Process.run_async(unit)
             unit.namespace.result = result
             return result
-
+        except KeyboardInterrupt:
+            return None
         except BaseException as e:
             unit.namespace.result = e
             raise
