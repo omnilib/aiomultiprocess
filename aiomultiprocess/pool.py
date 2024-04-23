@@ -108,7 +108,7 @@ class PoolWorker(Process):
                 tb = None
                 try:
                     result = future.result()
-                except BaseException as e:
+                except BaseException as e:  # noqa: B036
                     if self.exception_handler is not None:
                         self.exception_handler(e)
 
