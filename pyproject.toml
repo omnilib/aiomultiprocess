@@ -2,14 +2,12 @@
 requires = ["flit_core >=2,<4"]
 build-backend = "flit_core.buildapi"
 
-[tool.flit.metadata]
-module = "aiomultiprocess"
-author = "Amethyst Reese"
-author-email = "amy@noswap.com"
-description-file = "README.md"
-home-page = "https://aiomultiprocess.omnilib.dev"
-requires = []
-requires-python = ">=3.6"
+[project]
+name = "aiomultiprocess"
+authors = [
+    {name = "Amethyst Reese", email="amethyst@n7.gg"},
+]
+readme = "README.md"
 classifiers = [
     "Development Status :: 4 - Beta",
     "Framework :: AsyncIO",
@@ -17,10 +15,29 @@ classifiers = [
     "License :: OSI Approved :: MIT License",
     "Topic :: Software Development :: Libraries",
 ]
+dynamic = ["version", "description"]
+requires-python = ">=3.8"
 
-[tool.flit.metadata.urls]
+[project.urls]
 Documentation = "https://aiomultiprocess.omnilib.dev/en/latest/"
 Github = "https://github.com/omnilib/aiomultiprocess"
+
+[project.optional-dependencies]
+dev = [
+    "attribution==1.5.2",
+    "black==22.12.0",
+    "coverage==7.4.4",
+    "flake8==5.0.0",
+    "flake8-bugbear==22.1.11",
+    "flit==3.6.0",
+    "mypy==0.931",
+    "usort==1.0.1",
+    "uvloop==0.18.0; sys_platform != 'win32'",
+]
+docs = [
+    "sphinx==7.1.2",
+    "sphinx-mdinclude==0.6.0",
+]
 
 [tool.flit.sdist]
 exclude = [
