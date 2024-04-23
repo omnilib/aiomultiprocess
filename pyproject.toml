@@ -27,7 +27,7 @@ dev = [
     "attribution==1.5.2",
     "black==24.4.0",
     "coverage==7.4.4",
-    "flake8==5.0.0",
+    "flake8==7.0.0",
     "flake8-bugbear==22.1.11",
     "flit==3.9.0",
     "mypy==0.931",
