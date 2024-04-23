@@ -49,6 +49,7 @@ name = "aiomultiprocess"
 package = "aiomultiprocess"
 signed_tags = true
 version_file = true
+ignored_authors = ["dependabot", "pyup.io"]
 
 [tool.coverage.run]
 branch = true
