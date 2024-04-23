@@ -32,7 +32,7 @@ dev = [
     "flit==3.9.0",
     "mypy==0.931",
     "usort==1.0.8.post1",
-    "uvloop==0.18.0; sys_platform != 'win32'",
+    "uvloop==0.19.0; sys_platform != 'win32'",
 ]
 docs = [
     "sphinx==7.3.7",
