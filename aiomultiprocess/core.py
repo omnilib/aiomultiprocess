@@ -4,6 +4,7 @@
 import asyncio
 import logging
 import multiprocessing
+import multiprocessing.context
 import multiprocessing.managers
 import os
 import sys
@@ -16,7 +17,9 @@ DEFAULT_START_METHOD = "spawn"
 # shared context for all multiprocessing primitives, for platform compatibility
 # "spawn" is default/required on windows and mac, but can't execute non-global functions
 # see https://docs.python.org/3/library/multiprocessing.html#contexts-and-start-methods
-context = multiprocessing.get_context(DEFAULT_START_METHOD)
+context: multiprocessing.context.BaseContext = multiprocessing.get_context(
+    DEFAULT_START_METHOD
+)
 _manager = None
 
 log = logging.getLogger(__name__)
@@ -80,12 +83,12 @@ class Process:
     def __init__(
         self,
         group: None = None,
-        target: Callable = None,
-        name: str = None,
-        args: Sequence[Any] = None,
-        kwargs: Dict[str, Any] = None,
+        target: Optional[Callable] = None,
+        name: Optional[str] = None,
+        args: Optional[Sequence[Any]] = None,
+        kwargs: Optional[Dict[str, Any]] = None,
         *,
-        daemon: bool = None,
+        daemon: Optional[bool] = None,
         initializer: Optional[Callable] = None,
         initargs: Sequence[Any] = (),
         loop_initializer: Optional[Callable] = None,
@@ -111,7 +114,7 @@ class Process:
             initargs=initargs,
             loop_initializer=loop_initializer,
         )
-        self.aio_process = context.Process(
+        self.aio_process = context.Process(  # type: ignore[attr-defined]
             group=group,
             target=process_target or Process.run_async,
             args=(self.unit,),
@@ -127,7 +130,7 @@ class Process:
         return self.join().__await__()
 
     @staticmethod
-    def run_async(unit: Unit) -> R:
+    def run_async(unit: Unit) -> R:  # type: ignore[type-var]
         """Initialize the child process and event loop, then execute the coroutine."""
         try:
             if unit.loop_initializer is None:
@@ -152,7 +155,7 @@ class Process:
         """Start the child process."""
         return self.aio_process.start()
 
-    async def join(self, timeout: int = None) -> None:
+    async def join(self, timeout: Optional[int] = None) -> None:
         """Wait for the process to finish execution without blocking the main thread."""
         if not self.is_alive() and self.exitcode is None:
             raise ValueError("must start process before joining it")
@@ -216,7 +219,7 @@ class Worker(Process):
         self.unit.namespace.result = None
 
     @staticmethod
-    def run_async(unit: Unit) -> R:
+    def run_async(unit: Unit) -> R:  # type: ignore[type-var]
         """Initialize the child process and event loop, then execute the coroutine."""
         try:
             result: R = Process.run_async(unit)
@@ -227,13 +230,13 @@ class Worker(Process):
             unit.namespace.result = e
             raise
 
-    async def join(self, timeout: int = None) -> Any:
+    async def join(self, timeout: Optional[int] = None) -> Any:
         """Wait for the worker to finish, and return the final result."""
         await super().join(timeout)
         return self.result
 
     @property
-    def result(self) -> R:
+    def result(self) -> R:  # type: ignore[type-var]
         """Easy access to the resulting value from the coroutine."""
         if self.exitcode is None:
             raise ValueError("coroutine not completed")
