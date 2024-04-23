@@ -31,7 +31,7 @@ dev = [
     "flake8-bugbear==22.1.11",
     "flit==3.9.0",
     "mypy==0.931",
-    "usort==1.0.1",
+    "usort==1.0.8.post1",
     "uvloop==0.18.0; sys_platform != 'win32'",
 ]
 docs = [
