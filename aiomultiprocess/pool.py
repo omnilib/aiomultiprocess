@@ -2,7 +2,6 @@
 # Licensed under the MIT license
 
 import asyncio
-import logging
 import os
 import queue
 import traceback
@@ -37,8 +36,6 @@ from .types import (
 MAX_TASKS_PER_CHILD = 0  # number of tasks to execute before recycling a child process
 CHILD_CONCURRENCY = 16  # number of tasks to execute simultaneously per child process
 _T = TypeVar("_T")
-
-log = logging.getLogger(__name__)
 
 
 class PoolWorker(Process):
