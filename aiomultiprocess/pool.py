@@ -24,7 +24,17 @@ from aiohttp import ClientSession, ClientTimeout, TCPConnector
 
 from .core import Process, get_context
 from .scheduler import RoundRobin, Scheduler
-from .types import LoopInitializer, PoolTask, ProxyException, Queue, QueueID, R, T, TaskID, TracebackStr
+from .types import (
+    LoopInitializer,
+    PoolTask,
+    ProxyException,
+    Queue,
+    QueueID,
+    R,
+    T,
+    TaskID,
+    TracebackStr,
+)
 
 MAX_TASKS_PER_CHILD = 0  # number of tasks to execute before recycling a child process
 CHILD_CONCURRENCY = 16  # number of tasks to execute simultaneously per child process
@@ -68,8 +78,10 @@ class PoolWorker(Process):
         """Initiate a connection pool, pick up work, execute work, return results, rinse, repeat."""
         if self.init_client_session:
             async with ClientSession(
-                connector=TCPConnector(limit_per_host=max(100, self.concurrency), use_dns_cache=True),
-                timeout=ClientTimeout(total=60),
+                connector=TCPConnector(
+                    limit_per_host=max(100, self.concurrency), use_dns_cache=True
+                ),
+                timeout=ClientTimeout(total=90),
                 base_url=self.session_base_url if self.session_base_url else None,
             ) as client_session:
                 pending: Dict[asyncio.Future, TaskID] = {}
@@ -93,7 +105,10 @@ class PoolWorker(Process):
 
                         tid, func, args, kwargs = task
                         # print(f"W/ Session. Args: {args}, and kwargs: {kwargs}")
-                        args = [*args, client_session]  # NOTE: adds client session to the args list
+                        args = [
+                            *args,
+                            client_session,
+                        ]  # NOTE: adds client session to the args list
                         future = asyncio.ensure_future(func(*args, **kwargs))
                         pending[future] = tid
 
@@ -102,7 +117,11 @@ class PoolWorker(Process):
                         continue
 
                     # return results and/or exceptions when completed
-                    done, _ = await asyncio.wait(pending.keys(), timeout=0.05, return_when=asyncio.FIRST_COMPLETED)
+                    done, _ = await asyncio.wait(
+                        pending.keys(),
+                        timeout=0.05,
+                        return_when=asyncio.FIRST_COMPLETED,
+                    )
                     for future in done:
                         tid = pending.pop(future)
 
@@ -148,7 +167,9 @@ class PoolWorker(Process):
                     continue
 
                 # return results and/or exceptions when completed
-                done, _ = await asyncio.wait(pending.keys(), timeout=0.05, return_when=asyncio.FIRST_COMPLETED)
+                done, _ = await asyncio.wait(
+                    pending.keys(), timeout=0.05, return_when=asyncio.FIRST_COMPLETED
+                )
                 for future in done:
                     tid = pending.pop(future)
 
@@ -334,7 +355,9 @@ class Pool:
         tx.put_nowait((task_id, func, args, kwargs))
         return task_id
 
-    def finish_work(self, task_id: TaskID, value: Any, tb: Optional[TracebackStr]) -> None:
+    def finish_work(
+        self, task_id: TaskID, value: Any, tb: Optional[TracebackStr]
+    ) -> None:
         """
         Mark work items as completed.
 
