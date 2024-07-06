@@ -17,6 +17,12 @@ async def check_uvloop():
     loop = asyncio.get_event_loop()
     return isinstance(loop, uvloop.Loop)
 
+async def check_winloop():
+    import winloop
+
+    loop = asyncio.get_event_loop()
+    return isinstance(loop, winloop.Loop)
+
 
 class PoolTest(TestCase):
     @async_test
@@ -183,3 +189,16 @@ class PoolTest(TestCase):
 
         except ModuleNotFoundError:
             self.skipTest("uvloop not available")
+
+    @async_test
+    async def test_pool_winloop(self):
+        try:
+            import winloop
+
+            async with amp.Pool(2, loop_initializer=winloop.new_event_loop) as pool:
+                had_winloop = await pool.apply(check_winloop)
+                self.assertTrue(had_winloop)
+
+        except ModuleNotFoundError:
+            self.skipTest("winloop not available")
+
