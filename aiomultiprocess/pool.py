@@ -14,6 +14,7 @@ from typing import (
     Callable,
     Dict,
     Generator,
+    Iterable,
     Optional,
     Sequence,
     Tuple,
@@ -333,7 +334,7 @@ class Pool:
     def map(
         self,
         func: Callable[[T], Awaitable[R]],
-        iterable: Sequence[T],
+        iterable: Iterable[T],
         # chunksize: int = None,  # todo: implement chunking maybe
     ) -> PoolResult[R]:
         """Run a coroutine once for each item in the iterable."""
