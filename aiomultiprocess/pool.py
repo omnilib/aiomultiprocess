@@ -371,6 +371,28 @@ class Pool:
         for process in self.processes:
             process.terminate()
 
+        # Remove all remaining work in the queues, since otherwise this will
+        # prevent proper exit while multiprocessing waits until the threads
+        # associated with the queue has terminated, and that thread itself is
+        # waiting for queues to empty (but the processes have exited, so will
+        # not be doing the work).
+        for (tx, rx) in self.queues.values():
+            while True:
+                try:
+                    _ = tx.get_nowait()
+                except queue.Empty:
+                    break
+            tx.close()
+
+            while True:
+                try:
+                    _ = rx.get_nowait()
+                except queue.Empty:
+                    break
+            rx.close()
+
+        self.queues = {}
+
     async def join(self) -> None:
         """Wait for the pool to finish gracefully."""
         if self.running:
