@@ -81,7 +81,11 @@ class PoolWorker(Process):
             # pick up new work as long as we're "running" and we have open slots
             while running and len(pending) < self.concurrency:
                 try:
-                    task: PoolTask = self.tx.get_nowait()
+                    task: PoolTask
+                    if not pending:
+                        task = self.tx.get()
+                    else:
+                        task = self.tx.get_nowait()
                 except queue.Empty:
                     break
 
