@@ -18,6 +18,7 @@
 # -- Project information -----------------------------------------------------
 
 import datetime
+import os
 
 project = "aiomultiprocess"
 copyright = f"{datetime.date.today().year}, Amethyst Reese"
@@ -50,6 +51,9 @@ autodoc_typehints = "description"
 highlight_language = "python3"
 intersphinx_mapping = {"python": ("https://docs.python.org/3", None)}
 master_doc = "index"
+
+# Set canonical URL from the Read the Docs Domain
+html_baseurl = os.environ.get("READTHEDOCS_CANONICAL_URL", "")
 
 # -- Options for HTML output -------------------------------------------------
 
