@@ -9,7 +9,6 @@ import multiprocessing.managers
 import os
 import sys
 from typing import Any, Callable, Dict, Optional, Sequence
-
 from .types import Context, R, Unit
 
 DEFAULT_START_METHOD = "spawn"
@@ -114,7 +113,7 @@ class Process:
             initargs=initargs,
             loop_initializer=loop_initializer,
         )
-        self.aio_process = context.Process(  # type: ignore[attr-defined]
+        self.aio_process: multiprocessing.Process = context.Process(  # type: ignore[attr-defined]
             group=group,
             target=process_target or Process.run_async,
             args=(self.unit,),
@@ -160,11 +159,14 @@ class Process:
         if not self.is_alive() and self.exitcode is None:
             raise ValueError("must start process before joining it")
 
-        if timeout is not None:
-            return await asyncio.wait_for(self.join(), timeout)
-
+        if timeout:
+            return await asyncio.wait_for(self.join, timeout)
+        
         while self.exitcode is None:
-            await asyncio.sleep(0.005)
+            await asyncio.to_thread(self.aio_process.join, 0.005)
+
+
+        
 
     @property
     def name(self) -> str:
