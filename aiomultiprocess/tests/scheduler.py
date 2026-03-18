@@ -25,3 +25,14 @@ class SchedulerTest(TestCase):
         for i in range(5):
             self.assertEqual(scheduler.schedule_task(i, object, tuple(), {}), q1)
             self.assertEqual(scheduler.schedule_task(i, object, tuple(), {}), q2)
+
+    def test_roundrobin_scheduler_no_process(self):
+        """Test that scheduling without registered processes raises RuntimeError."""
+        scheduler = amp.RoundRobin()
+        qid = scheduler.register_queue(object())
+        # Note: NOT calling register_process(qid)
+
+        with self.assertRaises(RuntimeError) as cm:
+            scheduler.schedule_task(1, object, tuple(), {})
+
+        self.assertIn("No processes registered", str(cm.exception))
