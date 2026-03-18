@@ -77,6 +77,11 @@ class RoundRobin(Scheduler):
         _args: Sequence[Any],
         _kwargs: Dict[str, Any],
     ) -> QueueID:
+        if not self.qids:
+            raise RuntimeError(
+                "No processes registered with scheduler. "
+                "Call register_process() before scheduling tasks."
+            )
         return next(self.cycler)
 
     def complete_task(self, _task_id: TaskID) -> None:
