@@ -357,14 +357,26 @@ class Pool:
         return PoolResult(self, tids)
 
     def close(self) -> None:
-        """Close the pool to new visitors."""
+        """
+        Close the pool to new jobs.
+
+        Pending jobs keep running, and worker processes stop gracefully once
+        their queues have been drained. Await :meth:`join` after calling this
+        method to wait for the worker processes to exit.
+        """
         self.running = False
         for qid in self.processes.values():
             tx, _ = self.queues[qid]
             tx.put_nowait(None)
 
     def terminate(self) -> None:
-        """No running by the pool!"""
+        """
+        Terminate all worker processes immediately.
+
+        This stops workers without waiting for queued or in-flight jobs to
+        finish. Pending result objects may not complete, so this should be
+        reserved for shutdown paths that cannot wait for graceful completion.
+        """
         if self.running:
             self.close()
 

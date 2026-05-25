@@ -98,6 +98,22 @@ order as the inputs::
         async for value in pool.map(math.sqrt, data):
             ...
 
+Pools can also be closed manually when they are not used as asynchronous
+context managers. Calling ``close()`` prevents new jobs from being queued and
+asks worker processes to stop once their current queues have been drained. Use
+``await join()`` after ``close()`` to wait for those workers to exit
+gracefully::
+
+    pool = Pool()
+    results = await pool.map(math.sqrt, data)
+    pool.close()
+    await pool.join()
+
+Calling ``terminate()`` stops worker processes immediately instead of waiting
+for queued or in-flight jobs to finish. Pending result objects may not complete,
+so ``terminate()`` is best reserved for shutdown paths that cannot wait for a
+graceful ``close()`` and ``join()`` cycle.
+
 
 Advanced Usage
 --------------
