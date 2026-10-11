@@ -72,6 +72,10 @@ if __name__ == '__main__':
 
 Take a look at the [User Guide][] for more details and examples.
 
+To recycle workers after a fixed number of jobs, set a positive
+`maxtasksperchild` value on the pool. Each worker executes at most that many
+tasks, including when `childconcurrency` allows multiple tasks to run at once.
+
 For further context, watch the PyCon US 2018 talk about aiomultiprocess,
 ["Thinking Outside the GIL"][pycon-2018]:
 

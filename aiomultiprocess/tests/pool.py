@@ -8,7 +8,7 @@ from unittest import TestCase
 import aiomultiprocess as amp
 from aiomultiprocess.core import get_context
 from aiomultiprocess.pool import PoolWorker, ProxyException
-from .base import async_test, mapper, raise_fn, starmapper, two
+from .base import async_test, mapper, raise_fn, sleepy, starmapper, two
 
 
 async def check_uvloop():
@@ -19,6 +19,39 @@ async def check_uvloop():
 
 
 class PoolTest(TestCase):
+    @async_test
+    async def test_pool_worker_max_tasks_with_concurrency(self):
+        for ttl in (1, 3, 5):
+            with self.subTest(ttl=ttl):
+                tx = get_context().Queue()
+                rx = get_context().Queue()
+                for tid in range(8):
+                    tx.put_nowait((tid, mapper, (tid,), {}))
+
+                worker = PoolWorker(tx, rx, ttl, concurrency=4)
+                worker.start()
+                try:
+                    await worker.join(timeout=5)
+                    results = [rx.get_nowait() for _ in range(ttl)]
+                    self.assertEqual(
+                        sorted(results), [(tid, tid * 2, None) for tid in range(ttl)]
+                    )
+                    self.assertTrue(rx.empty())
+                    remaining = [tx.get_nowait()[0] for _ in range(8 - ttl)]
+                    self.assertEqual(remaining, list(range(ttl, 8)))
+                finally:
+                    if worker.is_alive():
+                        worker.terminate()
+                        await worker.join()
+                    tx.close()
+                    rx.close()
+
+    @async_test
+    async def test_pool_max_tasks_per_child_with_concurrency(self):
+        async with amp.Pool(1, maxtasksperchild=2, childconcurrency=4) as pool:
+            pids = await pool.starmap(sleepy, [()] * 6)
+            self.assertEqual(sorted(pids.count(pid) for pid in set(pids)), [2, 2, 2])
+
     @async_test
     async def test_pool_worker_max_tasks(self):
         tx = get_context().Queue()

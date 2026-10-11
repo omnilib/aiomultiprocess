@@ -80,6 +80,8 @@ class PoolWorker(Process):
 
             # pick up new work as long as we're "running" and we have open slots
             while running and len(pending) < self.concurrency:
+                if self.ttl and completed + len(pending) >= self.ttl:
+                    break
                 try:
                     task: PoolTask = self.tx.get_nowait()
                 except queue.Empty:
